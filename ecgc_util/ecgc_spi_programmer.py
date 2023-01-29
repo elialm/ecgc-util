@@ -31,7 +31,7 @@ class SpiProgrammer:
         # Disable debug preemptively, since it might still be on
         self.disable()
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: bytes) -> bytes:
         entire_response = bytearray()
 
         for i in range(0, len(data), 8):
@@ -43,21 +43,17 @@ class SpiProgrammer:
             response = self.__match_response(r'R([0-9a-fA-F]{' + str(len(chunk) * 2) + r'})', len(chunk) * 2 + 1)
             entire_response += response.group(1).encode('ascii')
 
-        return entire_response
+        return bytes(entire_response)
 
-    def enable(self) -> SpiProgrammer:
+    def enable(self) -> None:
         self.__port.write(b'#E;')
         self.__match_response(r'SUCCESS')
 
-        return self
-
-    def disable(self) -> SpiProgrammer:
+    def disable(self) -> None:
         self.__port.write(b'#D;')
         self.__match_response(r'SUCCESS')
 
-        return self
-
-    def __read_response(self, expected_length: int) -> None:
+    def __read_response(self, expected_length: int) -> str:
         read_bytes = self.__port.read(expected_length)
         if len(read_bytes) != expected_length:
             raise ProgrammerException('unexpected response length: expected {}, got {}'.format(
