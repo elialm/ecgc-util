@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ecgc-util"
 version = "0.0.1"
 authors = [
-  { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
+    { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
 ]
 description = "Utility scripts for development with the ecgc Gameboy cartridge"
 readme = "README.md"
@@ -15,6 +15,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+    "pyserial>=3.5",
 ]
 
 [project.scripts]

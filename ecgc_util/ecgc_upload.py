@@ -1,5 +1,9 @@
+from .ecgc_spi_programmer import SpiProgrammer
+
 def main_cli():
-    print('Hello world!')
+    programmer = SpiProgrammer('COM4')
+    programmer.enable()
+    programmer.disable()
 
 if __name__ == '__main__':
     main_cli()
