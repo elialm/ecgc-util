@@ -1,5 +1,6 @@
 from __future__ import annotations
 import serial
+from serial import SerialException
 import re
 from time import sleep
 
