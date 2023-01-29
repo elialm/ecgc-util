@@ -1,4 +1,4 @@
-from .ecgc_spi_programmer import SpiProgrammer, ProgrammerException, SerialException
+from .spi_programmer import SpiProgrammer, ProgrammerException, SerialException
 
 from argparse import ArgumentParser
 from sys import stderr
