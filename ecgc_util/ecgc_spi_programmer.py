@@ -1,3 +1,4 @@
+from __future__ import annotations
 import serial
 import re
 from time import sleep
@@ -33,19 +34,17 @@ class SpiProgrammer:
     def write(self, data: bytes) -> None:
         pass
 
-    def enable(self) -> None:
+    def enable(self) -> SpiProgrammer:
         self.__port.write(b'#E;')
-        response = self.__read_response(9)
+        self.__match_response(r'SUCCESS')
 
-        if response != 'SUCCESS':
-            raise ProgrammerException('unexpected response: expected \"SUCCESS\", got \"{}\"'.format(response))
+        return self
 
-    def disable(self) -> None:
+    def disable(self) -> SpiProgrammer:
         self.__port.write(b'#D;')
-        response = self.__read_response(9)
+        self.__match_response(r'SUCCESS')
 
-        if response != 'SUCCESS':
-            raise ProgrammerException('unexpected response: expected \"SUCCESS\", got \"{}\"'.format(response))
+        return self
 
     def __read_response(self, expected_length: int) -> None:
         read_bytes = self.__port.read(expected_length)
@@ -58,3 +57,13 @@ class SpiProgrammer:
             raise ProgrammerException('response is not in proper package form')
 
         return res.group(1)
+
+    def __match_response(self, expected) -> re.Match:
+        response = self.__read_response(len(expected))
+
+        res = re.match(expected, response)
+        if not res:
+            raise ProgrammerException(
+                'unexpected response: expected \"{}\", got \"{}\"'.format(expected, response))
+
+        return res
