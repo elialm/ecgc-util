@@ -32,7 +32,18 @@ class SpiProgrammer:
         self.disable()
 
     def write(self, data: bytes) -> None:
-        pass
+        entire_response = bytearray()
+
+        for i in range(0, len(data), 8):
+            upper_bound = min(i+8, len(data))
+            chunk = data[i:upper_bound]
+            burst_cmd = '#B{};'.format(chunk.hex().upper()).encode('ascii')
+
+            self.__port.write(burst_cmd)
+            response = self.__match_response(r'R([0-9a-fA-F]{' + str(len(chunk) * 2) + r'})', len(chunk) * 2 + 1)
+            entire_response += response.group(1).encode('ascii')
+
+        return entire_response
 
     def enable(self) -> SpiProgrammer:
         self.__port.write(b'#E;')
@@ -58,8 +69,11 @@ class SpiProgrammer:
 
         return res.group(1)
 
-    def __match_response(self, expected) -> re.Match:
-        response = self.__read_response(len(expected))
+    def __match_response(self, expected, length = None) -> re.Match:
+        if length == None:
+            length = len(expected)
+
+        response = self.__read_response(length + 2)
 
         res = re.match(expected, response)
         if not res:
