@@ -1,5 +1,5 @@
-def main():
+def main_cli():
     print('Hello world!')
 
 if __name__ == '__main__':
-    main()
+    main_cli()

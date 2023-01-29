@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ecgc-debug-util"
+name = "ecgc-util"
 version = "0.0.1"
 authors = [
   { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
 ]
-description = "Debug utility for development with the ecgc Gameboy cartridge"
+description = "Utility scripts for development with the ecgc Gameboy cartridge"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
@@ -16,6 +16,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
+[project.scripts]
+ecgc-upload = "ecgc_util.ecgc_upload:main_cli"
 
 # [project.urls]
 # "Homepage" = "https://github.com/pypa/sampleproject"
