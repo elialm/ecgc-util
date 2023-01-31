@@ -31,7 +31,7 @@ class SpiDebugger:
     def is_enabled(self) -> bool:
         return self.__enabled
 
-    def enable_core(self) -> SpiDebugger:
+    def enable_core(self) -> None:
         if self.__enabled:
             raise DebuggerException('debug core is already enabled')
 
@@ -42,18 +42,15 @@ class SpiDebugger:
         self.__send_packet('0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F', r'[0-9A-F]{34}F1', 'initialisation')
 
         self.__enabled = True
-        return self
 
-    def disable_core(self) -> SpiDebugger:
+    def disable_core(self) -> None:
         if not self.__enabled:
             raise DebuggerException('debug core is already disabled')
 
         self.__programmer.disable()
-
         self.__enabled = False
-        return self
 
-    def set_address(self, address: int) -> SpiDebugger:
+    def set_address(self, address: int) -> None:
         self.__assert_enabled(self.set_address.__name__)
         if address < 0 or address > 65535:
             raise ValueError(
@@ -68,19 +65,15 @@ class SpiDebugger:
         self.__send_packet('020F', r'F121', 'set low address command')
         self.__send_packet(addr_low + '0F', r'00' + addr_low, 'set low address')
 
-        return self
-
-    def enable_auto_increment(self) -> SpiDebugger:
+    def enable_auto_increment(self) -> None:
         self.__assert_enabled(self.enable_auto_increment.__name__)
         self.__send_packet('040F', r'F141', 'enable auto increment command')
-        return self
 
-    def disable_auto_increment(self) -> SpiDebugger:
+    def disable_auto_increment(self) -> None:
         self.__assert_enabled(self.enable_auto_increment.__name__)
         self.__send_packet('050F', r'F151', 'disable auto increment command')
-        return self
 
-    def write(self, data: bytes) -> SpiDebugger:
+    def write(self, data: bytes) -> None:
         for chunk in scatter(data, 16):
             if len(chunk) == 16:
                 # Send with burst write

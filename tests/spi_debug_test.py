@@ -99,22 +99,32 @@ class TestSpiDebugger(unittest.TestCase):
         with self.assertRaises(DebuggerException):
             debugger.disable_auto_increment()
 
-    def test_write_amount_divisible_in_even_bursts(self):
+    def test_write_read_amount_divisible_in_even_bursts(self):
         debugger = SpiDebugger(self.COM_PORT)
         write_data = b'\xc3[B>\xfa\xaf\xcb&\x1a\xaa\x98@\x03\xf5\x9a\x05'
+        read_data = b''
 
         with debugger:
             debugger.set_address(0x4000)
             debugger.enable_auto_increment()
             debugger.write(write_data)
+            debugger.set_address(0x4000)
+            read_data = debugger.read(16)
 
-    def test_write_amount_not_divisible_in_even_bursts(self):
+        self.assertTupleEqual(write_data, read_data)
+
+    def test_write_read_amount_not_divisible_in_even_bursts(self):
         debugger = SpiDebugger(self.COM_PORT)
         write_data = b'\x0f)\xa3S1\xcdc\x07\xbf\xa1\xcf\xef\xf4\x0b}'
+        read_data = b''
 
         with debugger:
             debugger.set_address(0x4000)
             debugger.enable_auto_increment()
             debugger.write(write_data)
+            debugger.set_address(0x4000)
+            read_data = debugger.read(15)
+
+        self.assertTupleEqual(write_data, read_data)
 
     
