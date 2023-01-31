@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from .spi_programmer import SpiProgrammer, ProgrammerException, SerialException
+from .spi_programmer import SpiProgrammer, scatter
 
 
 class DebuggerException(Exception):
@@ -39,7 +39,7 @@ class SpiDebugger:
 
         # send idle command to check if core is enabled and flush any ongoing transaction
         # last byte must be idle response (0xF1)
-        self.__send_packet('0F0F0F', r'[0-9A-F]{4}F1', 'initialisation')
+        self.__send_packet('0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F', r'[0-9A-F]{34}F1', 'initialisation')
 
         self.__enabled = True
         return self
@@ -81,7 +81,24 @@ class SpiDebugger:
         return self
 
     def write(self, data: bytes) -> SpiDebugger:
-        return self
+        for chunk in scatter(data, 16):
+            if len(chunk) == 16:
+                # Send with burst write
+                self.__send_packet('0B0F', r'F1B1', 'write burst command')
+
+                first_byte = '00'
+                for burst in scatter(data.hex().upper(), 16):
+                    self.__send_packet(burst, first_byte + burst[:-2], 'write burst data')
+                    first_byte = burst[-2:]
+
+                self.__send_packet('0F0F', first_byte + r'F1', 'write burst close off')
+            else:
+                # Send with normal writes
+                for byte in chunk:
+                    hex_string = '%02X' % byte
+
+                    self.__send_packet('090F', r'F191', 'write command')
+                    self.__send_packet(hex_string + '0F', r'00' + hex_string, 'write data')
 
     def read(self, length: int) -> bytes:
         return b''
@@ -96,7 +113,7 @@ class SpiDebugger:
         res = re.match(response_format, response)
         if not res:
             raise DebuggerException('unexpected debugger response{}: expected \"{}\", got \"{}\"'.format(
-                ' during' + exception_info if exception_info else '', response_format, response))
+                ' during ' + exception_info if exception_info else '', response_format, response))
 
         return res
 
