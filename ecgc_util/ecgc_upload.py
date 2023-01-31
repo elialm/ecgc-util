@@ -49,7 +49,8 @@ __LOG_LEVELS = (
 __TARGET_CONFIGS = {
     'boot': {
         'max_size': parse_size('4k'),
-        'default_size': parse_size('4k')
+        'default_size': parse_size('4k'),
+        'start_address': 0x0000
     },
     'dram': None,
     'flash': None
@@ -96,16 +97,21 @@ def main_cli():
         logging.warning('given size is larger than allowed, clipping it to {} based on target'.format(compose_size(target_config['max_size'])))
 
     try:
-        # with SpiDebugger(args.serial_port) as debugger:
-        #     debugger.enable_auto_increment()
-        #     debugger.set_address(0x0000)
+        with SpiDebugger(args.serial_port) as debugger:
+            debugger.enable_auto_increment()
+            debugger.set_address(target_config['start_address'])
 
-        #     bytes_left = min
-        #     with open(args.image_file, mode='rb') as image_file:
-        #         while chunk := image_file.read(READ_BUFFER_SIZE):
-        #             chunk = chunk[:min()]
-        pass
-                
+            bytes_left = args.size
+            with open(args.image_file, mode='rb') as image_file:
+                while bytes_left > 0:
+                    read_amount = min(bytes_left, READ_BUFFER_SIZE)
+                    chunk = image_file.read(read_amount)
+                    debugger.write(chunk)
+                    bytes_left -= len(chunk)
+                    
+            if bytes_left != 0:
+                logging.warning('given size argument expects more bytes to be written ({} left)'.format(bytes_left))
+
     except (DebuggerException, ProgrammerException, SerialException) as e:
         logging.critical(e)
         exit(1)

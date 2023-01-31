@@ -81,7 +81,7 @@ class SpiDebugger:
                 self.__send_packet('0B0F', r'F1B1', 'write burst command')
 
                 first_byte = '00'
-                for burst in scatter(data.hex().upper(), 16):
+                for burst in scatter(chunk.hex().upper(), 16):
                     self.__send_packet(burst, first_byte + burst[:-2], 'write burst data')
                     first_byte = burst[-2:]
 
