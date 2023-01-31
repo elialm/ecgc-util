@@ -63,4 +63,28 @@ class TestSpiDebugger(unittest.TestCase):
             with debugger:
                 debugger.set_address(0x10000)
 
+    def test_enable_auto_increment(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.enable_auto_increment()
+
+    def test_enable_auto_increment_core_disabled(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with self.assertRaises(DebuggerException):
+            debugger.enable_auto_increment()
+
+    def test_disable_auto_increment(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.disable_auto_increment()
+
+    def test_disable_auto_increment_core_disabled(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with self.assertRaises(DebuggerException):
+            debugger.disable_auto_increment()
+
     

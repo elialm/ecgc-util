@@ -72,12 +72,12 @@ class SpiDebugger:
 
     def enable_auto_increment(self) -> SpiDebugger:
         self.__assert_enabled(self.enable_auto_increment.__name__)
-
-
-
+        self.__send_packet('040F', r'F141', 'enable auto increment command')
         return self
 
     def disable_auto_increment(self) -> SpiDebugger:
+        self.__assert_enabled(self.enable_auto_increment.__name__)
+        self.__send_packet('050F', r'F151', 'disable auto increment command')
         return self
 
     def write(self, data: bytes) -> SpiDebugger:
