@@ -39,7 +39,7 @@ class SpiDebugger:
 
         # send idle command to check if core is enabled and flush any ongoing transaction
         # last byte must be idle response (0xF1)
-        self.__send_packet('0F0F0F', r'[0-9A-F]{4}F1', 'initialisation error')
+        self.__send_packet('0F0F0F', r'[0-9A-F]{4}F1', 'initialisation')
 
         self.__enabled = True
         return self
@@ -71,6 +71,10 @@ class SpiDebugger:
         return self
 
     def enable_auto_increment(self) -> SpiDebugger:
+        self.__assert_enabled(self.enable_auto_increment.__name__)
+
+
+
         return self
 
     def disable_auto_increment(self) -> SpiDebugger:
@@ -91,8 +95,8 @@ class SpiDebugger:
 
         res = re.match(response_format, response)
         if not res:
-            raise DebuggerException('{}unexpected debugger response: expected \"{}\", got \"{}\"'.format(
-                exception_info + ': ' if exception_info else '', response_format, response))
+            raise DebuggerException('unexpected debugger response{}: expected \"{}\", got \"{}\"'.format(
+                ' during' + exception_info if exception_info else '', response_format, response))
 
         return res
 
