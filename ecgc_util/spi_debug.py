@@ -93,8 +93,28 @@ class SpiDebugger:
                     self.__send_packet('090F', r'F191', 'write command')
                     self.__send_packet(hex_string + '0F', r'00' + hex_string, 'write data')
 
-    def read(self, length: int) -> bytes:
-        return b''
+    def read(self, read_length: int) -> bytes:
+        entire_read = bytearray()
+
+        for offset in range(0, read_length, 16):
+            upper_bound = min(offset + 16, read_length)
+            length = upper_bound - offset
+
+            if length == 16:
+                # Receive with burst read
+                self.__send_packet('0A0F', r'F1A1', 'read burst command')
+                response = self.__send_packet('0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F', r'([0-9A-F]{32})00', 'read burst data')
+                entire_read += bytes.fromhex(response.group(1))
+            else:
+                # Receive with normal read
+                for _ in range(length):
+                    self.__send_packet('080F', r'F181', 'read command')
+                    response = self.__send_packet('0F0F', r'([0-9A-F]{2})00', 'read data')
+                    entire_read += bytes.fromhex(response.group(1))
+
+        return bytes(entire_read)
+
+
 
     def __send_packet(self, data: str, response_format: re.Pattern | str, exception_info: str = None) -> re.Match:
         if isinstance(response_format, str):

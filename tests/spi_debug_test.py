@@ -11,14 +11,12 @@ class TestSpiDebugger(unittest.TestCase):
 
         self.assertFalse(debugger.is_enabled())
     
-    @unittest.skip('testing something else')
     def test_debugger_enable(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         debugger.enable_core()
         self.assertTrue(debugger.is_enabled())
 
-    @unittest.skip('testing something else')
     def test_debugger_disable(self):
         debugger = SpiDebugger(self.COM_PORT)
 
@@ -26,7 +24,6 @@ class TestSpiDebugger(unittest.TestCase):
         debugger.disable_core()
         self.assertFalse(debugger.is_enabled())
 
-    @unittest.skip('testing something else')
     def test_debugger_improper_double_enable(self):
         debugger = SpiDebugger(self.COM_PORT)
         debugger.enable_core()
@@ -34,28 +31,24 @@ class TestSpiDebugger(unittest.TestCase):
         with self.assertRaises(DebuggerException):
             debugger.enable_core()
 
-    @unittest.skip('testing something else')
     def test_debugger_improper_disable(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with self.assertRaises(DebuggerException):
             debugger.disable_core()
 
-    @unittest.skip('testing something else')
     def test_set_address(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with debugger:
             debugger.set_address(0x0100)
 
-    @unittest.skip('testing something else')
     def test_set_address_core_disabled(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with self.assertRaises(DebuggerException):
             debugger.set_address(0x0100)
 
-    @unittest.skip('testing something else')
     def test_set_address_negative(self):
         debugger = SpiDebugger(self.COM_PORT)
 
@@ -63,7 +56,6 @@ class TestSpiDebugger(unittest.TestCase):
             with debugger:
                 debugger.set_address(-1)
 
-    @unittest.skip('testing something else')
     def test_set_address_too_large(self):
         debugger = SpiDebugger(self.COM_PORT)
 
@@ -71,28 +63,24 @@ class TestSpiDebugger(unittest.TestCase):
             with debugger:
                 debugger.set_address(0x10000)
 
-    @unittest.skip('testing something else')
     def test_enable_auto_increment(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with debugger:
             debugger.enable_auto_increment()
 
-    @unittest.skip('testing something else')
     def test_enable_auto_increment_core_disabled(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with self.assertRaises(DebuggerException):
             debugger.enable_auto_increment()
 
-    @unittest.skip('testing something else')
     def test_disable_auto_increment(self):
         debugger = SpiDebugger(self.COM_PORT)
 
         with debugger:
             debugger.disable_auto_increment()
 
-    @unittest.skip('testing something else')
     def test_disable_auto_increment_core_disabled(self):
         debugger = SpiDebugger(self.COM_PORT)
 
@@ -111,7 +99,7 @@ class TestSpiDebugger(unittest.TestCase):
             debugger.set_address(0x4000)
             read_data = debugger.read(16)
 
-        self.assertTupleEqual(write_data, read_data)
+        self.assertEqual(write_data, read_data)
 
     def test_write_read_amount_not_divisible_in_even_bursts(self):
         debugger = SpiDebugger(self.COM_PORT)
@@ -125,6 +113,6 @@ class TestSpiDebugger(unittest.TestCase):
             debugger.set_address(0x4000)
             read_data = debugger.read(15)
 
-        self.assertTupleEqual(write_data, read_data)
+        self.assertEqual(write_data, read_data)
 
     
