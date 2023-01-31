@@ -1,6 +1,7 @@
 from __future__ import annotations
-import serial
+from typing import Iterable, Iterator
 from serial import SerialException
+import serial
 import re
 
 PROGRAMMER_BAUD_RATE = 115200
@@ -10,6 +11,14 @@ PROGRAMMER_STOP_BITS = 1
 
 PACKAGE_CONTENTS_PATTERN = re.compile(r'#(.+);')
 
+
+def scatter(collection: Iterable, chunk_size: int) -> Iterator[Iterable]:
+    if chunk_size < 1:
+        raise ValueError('chunk_size must be 1 or higher')
+
+    for i in range(0, len(collection), chunk_size):
+        upper_bound = min(i + chunk_size, len(collection))
+        yield collection[i:upper_bound]
 
 class ProgrammerException(Exception):
     def __init__(self, *args: object) -> None:
@@ -35,9 +44,7 @@ class SpiProgrammer:
     def write(self, data: bytes) -> bytes:
         entire_response = bytearray()
 
-        for i in range(0, len(data), 8):
-            upper_bound = min(i+8, len(data))
-            chunk = data[i:upper_bound]
+        for chunk in scatter(data, 8):
             burst_cmd = '#B{};'.format(chunk.hex().upper()).encode('ascii')
 
             self.__port.write(burst_cmd)
