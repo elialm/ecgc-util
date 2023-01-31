@@ -8,12 +8,30 @@ class DebuggerException(Exception):
         super().__init__(*args)
 
 
-class SpiDebugCore:
+class SpiDebugger:
     def __init__(self, port: str) -> None:
         self.__programmer = SpiProgrammer(port)
         self.__enabled = False
 
-    def enable_core(self) -> SpiDebugCore:
+        with self:
+            # Disable auto increment by default since it might still be enabled
+            self.disable_auto_increment()
+
+            # Set address to 0 since it might be something else
+            self.set_address(0)
+
+    def __enter__(self) -> SpiDebugger:
+        self.enable_core()
+        return self
+
+    def __exit__(self, type, value, traceback) -> bool:
+        self.disable_core()
+        return value == None
+
+    def is_enabled(self) -> bool:
+        return self.__enabled
+
+    def enable_core(self) -> SpiDebugger:
         if self.__enabled:
             raise DebuggerException('debug core is already enabled')
 
@@ -23,26 +41,28 @@ class SpiDebugCore:
         # 1st byte can be anything, but 2nd byte must be idle response (0xF1)
         self.__send_packet('0F0F', r'[0-9A-F]{2}F1', 'initialisation error')
 
+        self.__enabled = True
         return self
 
-    def disable_core(self) -> SpiDebugCore:
+    def disable_core(self) -> SpiDebugger:
         if not self.__enabled:
             raise DebuggerException('debug core is already disabled')
 
         self.__programmer.disable()
 
+        self.__enabled = False
         return self
 
-    def set_address(self, address: int) -> SpiDebugCore:
+    def set_address(self, address: int) -> SpiDebugger:
         return self
 
-    def enable_auto_increment(self) -> SpiDebugCore:
+    def enable_auto_increment(self) -> SpiDebugger:
         return self
 
-    def disable_auto_increment(self) -> SpiDebugCore:
+    def disable_auto_increment(self) -> SpiDebugger:
         return self
 
-    def write(self, data: bytes) -> SpiDebugCore:
+    def write(self, data: bytes) -> SpiDebugger:
         return self
 
     def read(self, length: int) -> bytes:

@@ -42,7 +42,7 @@ class SpiProgrammer:
 
             self.__port.write(burst_cmd)
             response = self.__match_response(r'R([0-9a-fA-F]{' + str(len(chunk) * 2) + r'})', len(chunk) * 2 + 1)
-            entire_response += response.group(1).encode('ascii')
+            entire_response += bytes.fromhex(response.group(1))
 
         return bytes(entire_response)
 
