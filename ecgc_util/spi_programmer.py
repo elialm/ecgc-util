@@ -2,7 +2,6 @@ from __future__ import annotations
 import serial
 from serial import SerialException
 import re
-from time import sleep
 
 PROGRAMMER_BAUD_RATE = 115200
 PROGRAMMER_DATA_BITS = 8
@@ -24,10 +23,11 @@ class SpiProgrammer:
                                     bytesize=PROGRAMMER_DATA_BITS,
                                     parity=PROGRAMMER_PARITY,
                                     stopbits=PROGRAMMER_STOP_BITS,
-                                    timeout=1)
+                                    timeout=5)
 
-        # Sleep for a bit to let the Arduino reset
-        sleep(2)
+        # Wait till the programmer is ready
+        self.__match_response(r'READY')
+        self.__port.timeout = 0.2
 
         # Disable debug preemptively, since it might still be on
         self.disable()
