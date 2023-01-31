@@ -37,9 +37,9 @@ class SpiDebugger:
 
         self.__programmer.enable()
 
-        # send idle command to check if core is enabled
-        # 1st byte can be anything, but 2nd byte must be idle response (0xF1)
-        self.__send_packet('0F0F', r'[0-9A-F]{2}F1', 'initialisation error')
+        # send idle command to check if core is enabled and flush any ongoing transaction
+        # last byte must be idle response (0xF1)
+        self.__send_packet('0F0F0F', r'[0-9A-F]{4}F1', 'initialisation error')
 
         self.__enabled = True
         return self
@@ -54,6 +54,20 @@ class SpiDebugger:
         return self
 
     def set_address(self, address: int) -> SpiDebugger:
+        self.__assert_enabled(self.set_address.__name__)
+        if address < 0 or address > 65535:
+            raise ValueError(
+                'address must be a 16-bit unsigned integer (0-65535)')
+
+        hex_string = '%04X' % address
+        addr_low = hex_string[2:4]
+        addr_high = hex_string[0:2]
+
+        self.__send_packet('030F', r'F131', 'set high address command')
+        self.__send_packet(addr_high + '0F', r'00' + addr_high, 'set high address')
+        self.__send_packet('020F', r'F121', 'set low address command')
+        self.__send_packet(addr_low + '0F', r'00' + addr_low, 'set low address')
+
         return self
 
     def enable_auto_increment(self) -> SpiDebugger:
@@ -81,3 +95,8 @@ class SpiDebugger:
                 exception_info + ': ' if exception_info else '', response_format, response))
 
         return res
+
+    def __assert_enabled(self, exception_info: str = None) -> None:
+        if not self.__enabled:
+            raise DebuggerException('debug core must be enabled for {}operation'.format(
+                exception_info + ' ' if exception_info else ''))

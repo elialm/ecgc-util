@@ -37,4 +37,30 @@ class TestSpiDebugger(unittest.TestCase):
         with self.assertRaises(DebuggerException):
             debugger.disable_core()
 
+    def test_set_address(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.set_address(0x0100)
+
+    def test_set_address_core_disabled(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with self.assertRaises(DebuggerException):
+            debugger.set_address(0x0100)
+
+    def test_set_address_negative(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with self.assertRaises(ValueError):
+            with debugger:
+                debugger.set_address(-1)
+
+    def test_set_address_too_large(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with self.assertRaises(ValueError):
+            with debugger:
+                debugger.set_address(0x10000)
+
     
