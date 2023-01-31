@@ -1,6 +1,7 @@
 from __future__ import annotations
+from .spi_programmer import SpiProgrammer, ProgrammerException, SerialException, scatter
 import re
-from .spi_programmer import SpiProgrammer, scatter
+import logging
 
 
 class DebuggerException(Exception):
@@ -123,10 +124,15 @@ class SpiDebugger:
         byte_data = bytes.fromhex(data)
         response = self.__programmer.write(byte_data).hex().upper()
 
+        logging.debug('__send_packet() call for \"{}\"'.format(exception_info))
+        logging.debug('       sent {}'.format(byte_data.hex().upper()))
+        logging.debug('   received {}'.format(response))
+        logging.debug('   expected {}'.format(response_format.pattern))
+
         res = re.match(response_format, response)
         if not res:
             raise DebuggerException('unexpected debugger response{}: expected \"{}\", got \"{}\"'.format(
-                ' during ' + exception_info if exception_info else '', response_format, response))
+                ' during ' + exception_info if exception_info else '', response_format.pattern, response))
 
         return res
 
