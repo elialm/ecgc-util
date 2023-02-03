@@ -75,6 +75,7 @@ class SpiDebugger:
         self.__send_packet('050F', r'F151', 'disable auto increment command')
 
     def write(self, data: bytes) -> None:
+        self.__assert_enabled(self.write.__name__)
         for chunk in scatter(data, 16):
             if len(chunk) == 16:
                 # Send with burst write
@@ -95,6 +96,7 @@ class SpiDebugger:
                     self.__send_packet(hex_string + '0F', r'00' + hex_string, 'write data')
 
     def read(self, read_length: int) -> bytes:
+        self.__assert_enabled(self.read.__name__)
         entire_read = bytearray()
 
         for offset in range(0, read_length, 16):
