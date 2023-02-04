@@ -112,7 +112,7 @@ def main_cli():
             if bytes_left != 0:
                 logging.warning('given size argument expects more bytes to be written ({} left)'.format(bytes_left))
 
-    except (DebuggerException, ProgrammerException, SerialException) as e:
+    except (DebuggerException, SerialException) as e:
         logging.critical(e)
         exit(1)
 

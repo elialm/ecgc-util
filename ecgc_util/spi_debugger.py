@@ -35,7 +35,7 @@ class SpiDebugger:
                                     timeout=5)
 
         # Wait till the programmer is ready
-        self.__match_response(r'READY')
+        self.__match_response(r'RDY')
         self.__port.timeout = 0.2
 
         with self:
@@ -100,42 +100,35 @@ class SpiDebugger:
 
         # TODO: implement
 
-    def __send_packet(self, data: str, response_format: re.Pattern | str, exception_info: str = None) -> re.Match:
-        # if isinstance(response_format, str):
-        #     response_format = re.compile(response_format)
+    def __send_packet(self, packet: str, response_format: re.Pattern | str, description: str) -> re.Match:
+        self.__port.write(packet.encode('ascii'))
+        response = self.__read_response()
 
-        # byte_data = bytes.fromhex(data)
-        # response = self.__programmer.write(byte_data).hex().upper()
+        logging.debug('__send_packet() call for \"{}\"'.format(description))
+        logging.debug('       sent {}'.format(packet))
+        logging.debug('   received {}'.format(response))
+        logging.debug('   expected {}'.format(response_format.pattern))
 
-        # logging.debug('__send_packet() call for \"{}\"'.format(exception_info))
-        # logging.debug('       sent {}'.format(byte_data.hex().upper()))
-        # logging.debug('   received {}'.format(response))
-        # logging.debug('   expected {}'.format(response_format.pattern))
+        res = re.match(response_format, response)
+        if not res:
+            raise DebuggerException('unexpected debugger response during {}: expected \"{}\", got \"{}\"'.format(
+                description, response_format.pattern, response))
 
-        # res = re.match(response_format, response)
-        # if not res:
-        #     raise DebuggerException('unexpected debugger response{}: expected \"{}\", got \"{}\"'.format(
-        #         ' during ' + exception_info if exception_info else '', response_format.pattern, response))
+        return res
 
-        # return res
+    def __read_response(self) -> str:
+        read_bytes = self.__port.read_until(b'\n')
+        
+        if len(read_bytes) == 0:
+            raise DebuggerException('serial read returned 0 bytes')
 
-        return None
+        if read_bytes[-1] != b'\n'[0]:
+            raise DebuggerException('read response is not in expected packet form')
 
-    # def __read_response(self) -> str:
-    #     read_bytes = self.__port
-    #     if len(read_bytes) != expected_length:
-    #         raise DebuggerException('unexpected response length: expected {}, got {}'.format(
-    #             expected_length, len(read_bytes)))
-
-    #     res = re.match(PACKAGE_CONTENTS_PATTERN, read_bytes.decode('ascii'))
-    #     if not res:
-    #         raise DebuggerException('response is not in proper package form')
-
-    #     return res.group(1)
+        return read_bytes[:-1].decode('ascii')
 
     def __match_response(self, expected) -> re.Match:
-        # response = self.__read_response()
-        response = ''
+        response = self.__read_response()
 
         res = re.match(expected, response)
         if not res:
