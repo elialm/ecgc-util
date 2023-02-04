@@ -60,16 +60,14 @@ class SpiDebugger:
         if self.__enabled:
             raise DebuggerException('debug core is already enabled')
 
-        # TODO: implement
-
+        self.__send_packet('CE', r'ACK', 'core enable')
         self.__enabled = True
 
     def disable_core(self) -> None:
         if not self.__enabled:
             raise DebuggerException('debug core is already disabled')
 
-        # TODO: implement
-
+        self.__send_packet('CD', r'ACK', 'core disable')
         self.__enabled = False
 
     def set_address(self, address: int) -> None:
@@ -78,41 +76,55 @@ class SpiDebugger:
             raise ValueError(
                 'address must be a 16-bit unsigned integer (0-65535)')
 
-        # TODO: implement
+        self.__send_packet('A%04X' % address, r'ACK', 'set address')
 
     def enable_auto_increment(self) -> None:
         self.__assert_enabled(self.enable_auto_increment.__name__)
-
-        # TODO: implement
+        self.__send_packet('IE', r'ACK', 'enable auto increment')
 
     def disable_auto_increment(self) -> None:
         self.__assert_enabled(self.enable_auto_increment.__name__)
-
-        # TODO: implement
+        self.__send_packet('ID', r'ACK', 'disable auto increment')
 
     def write(self, data: bytes) -> None:
         self.__assert_enabled(self.write.__name__)
         
-        # TODO: implement
+        for write_burst in scatter(data, 256):
+            self.__send_packet('W%02X' % (len(write_burst) - 1), r'ACK', 'write command')
+            for data_burst in scatter(write_burst, 32):
+                data_string = 'D' + data_burst.hex().upper()
+                self.__send_packet(data_string, r'ACK', 'write data')
 
     def read(self, read_length: int) -> bytes:
         self.__assert_enabled(self.read.__name__)
+        if read_length < 1:
+            raise ValueError('read length must be at least 1')
 
-        # TODO: implement
+        entire_read = bytearray()
+
+        for burst_length in map(lambda i: min(read_length - i, 256), range(0, read_length, 256)):
+            read_command = 'R%02X' % (burst_length - 1)
+            self.__port.write(read_command.encode('ascii') + b'\n')
+
+            for data_length in map(lambda i: min(burst_length - i, 32), range(0, burst_length, 32)):
+                res = self.__match_response(r'D([0-9A-F]{' + str(data_length * 2) + r'})')
+                entire_read += bytes.fromhex(res.group(1))
+
+        return bytes(entire_read)
 
     def __send_packet(self, packet: str, response_format: re.Pattern | str, description: str) -> re.Match:
-        self.__port.write(packet.encode('ascii'))
+        self.__port.write(packet.encode('ascii') + b'\n')
         response = self.__read_response()
 
         logging.debug('__send_packet() call for \"{}\"'.format(description))
         logging.debug('       sent {}'.format(packet))
         logging.debug('   received {}'.format(response))
-        logging.debug('   expected {}'.format(response_format.pattern))
+        logging.debug('   expected {}'.format(response_format.pattern if isinstance(response_format, re.Pattern) else response_format))
 
         res = re.match(response_format, response)
         if not res:
             raise DebuggerException('unexpected debugger response during {}: expected \"{}\", got \"{}\"'.format(
-                description, response_format.pattern, response))
+                description, response_format.pattern if isinstance(response_format, re.Pattern) else response_format, response))
 
         return res
 
