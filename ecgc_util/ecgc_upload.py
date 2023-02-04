@@ -1,4 +1,4 @@
-from .spi_debug import SpiDebugger, DebuggerException, ProgrammerException, SerialException
+from .spi_debugger import SpiDebugger, DebuggerException, SerialException
 from argparse import ArgumentParser
 from sys import stderr
 import re
