@@ -35,7 +35,7 @@ class SpiDebugger:
                                     timeout=5)
 
         # Wait till the programmer is ready
-        self.__match_response(r'RDY')
+        self.__match_response(r'RDY', 'initialisation')
         self.__port.timeout = 0.2
 
         with self:
@@ -106,25 +106,27 @@ class SpiDebugger:
             read_command = 'R%02X' % (burst_length - 1)
             self.__port.write(read_command.encode('ascii') + b'\n')
 
+            logging.debug('sent data for \"read command\"')
+            logging.debug('       sent {}'.format(read_command))
+
             for data_length in map(lambda i: min(burst_length - i, 32), range(0, burst_length, 32)):
-                res = self.__match_response(r'D([0-9A-F]{' + str(data_length * 2) + r'})')
+                res = self.__match_response(r'D([0-9A-F]{' + str(data_length * 2) + r'})', 'read data')
                 entire_read += bytes.fromhex(res.group(1))
 
         return bytes(entire_read)
 
-    def __send_packet(self, packet: str, response_format: re.Pattern | str, description: str) -> re.Match:
+    def __send_packet(self, packet: str, response_format: str, description: str) -> re.Match:
         self.__port.write(packet.encode('ascii') + b'\n')
-        response = self.__read_response()
 
-        logging.debug('__send_packet() call for \"{}\"'.format(description))
+        logging.debug('sent data for \"{}\"'.format(description))
         logging.debug('       sent {}'.format(packet))
-        logging.debug('   received {}'.format(response))
-        logging.debug('   expected {}'.format(response_format.pattern if isinstance(response_format, re.Pattern) else response_format))
 
+        response = self.__read_response()
         res = re.match(response_format, response)
+
         if not res:
             raise DebuggerException('unexpected debugger response during {}: expected \"{}\", got \"{}\"'.format(
-                description, response_format.pattern if isinstance(response_format, re.Pattern) else response_format, response))
+                description, response_format, response))
 
         return res
 
@@ -139,8 +141,12 @@ class SpiDebugger:
 
         return read_bytes[:-1].decode('ascii')
 
-    def __match_response(self, expected) -> re.Match:
+    def __match_response(self, expected, description) -> re.Match:
         response = self.__read_response()
+
+        logging.debug('matching response for \"{}\"'.format(description))
+        logging.debug('   received {}'.format(response))
+        logging.debug('   expected {}'.format(expected))
 
         res = re.match(expected, response)
         if not res:
