@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecgc-util"
-version = "0.0.1"
+version = "0.1a"
 authors = [
     { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
 ]
@@ -23,6 +23,6 @@ dependencies = [
 [project.scripts]
 ecgc-upload = "ecgc_util.ecgc_upload:main_cli"
 
-# [project.urls]
-# "Homepage" = "https://github.com/pypa/sampleproject"
-# "Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
+[project.urls]
+"Homepage" = "https://github.com/elialm/ecgc-util"
+"Bug Tracker" = "https://github.com/elialm/ecgc-util/issues"
