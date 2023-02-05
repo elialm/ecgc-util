@@ -11,6 +11,21 @@ DEBUGGER_PARITY = serial.PARITY_NONE
 DEBUGGER_STOP_BITS = 1
 
 def scatter(collection: Iterable, chunk_size: int) -> Iterator[Iterable]:
+    """Scatter an Iterable over multiple Iterables of a max length
+
+    Args:
+        collection (Iterable): Iterable to scatter
+        chunk_size (int): maximum length of each chunk scattered.
+        Must be larger than 1.
+
+    Raises:
+        ValueError: if chunk_size is an invalid value
+
+    Yields:
+        Iterator[Iterable]: slice after slice with a maximum length
+        of chunk_size
+    """
+
     if chunk_size < 1:
         raise ValueError('chunk_size must be 1 or higher')
 
@@ -20,12 +35,27 @@ def scatter(collection: Iterable, chunk_size: int) -> Iterator[Iterable]:
 
 
 class DebuggerException(Exception):
+    """Exception thrown when an error occurs during SpiDebugger operations"""
+
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
 
 class SpiDebugger:
+    """Class for controlling an ecgc SPI programmer via a serial port"""
+
     def __init__(self, port: str) -> None:
+        """Create SpiDebugger instance
+
+        Args:
+            port (str): serial port of the spi programmer to operate
+
+        Raises:
+            DebuggerException: if the core is already enabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+        """
+
         self.__enabled = False
         self.__port = serial.Serial(port,
                                     baudrate=DEBUGGER_BAUD_RATE,
@@ -54,9 +84,23 @@ class SpiDebugger:
         return value == None
 
     def is_enabled(self) -> bool:
+        """Query whether the core is enabled or not
+
+        Returns:
+            bool: indicating the core is enabled or not
+        """
+
         return self.__enabled
 
     def enable_core(self) -> None:
+        """Enable the cartridge's debug core
+
+        Raises:
+            DebuggerException: if the core is already enabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+        """
+
         if self.__enabled:
             raise DebuggerException('debug core is already enabled')
 
@@ -64,6 +108,14 @@ class SpiDebugger:
         self.__enabled = True
 
     def disable_core(self) -> None:
+        """Disable the cartridge's debug core
+
+        Raises:
+            DebuggerException: if the core is already disabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+        """
+
         if not self.__enabled:
             raise DebuggerException('debug core is already disabled')
 
@@ -71,6 +123,19 @@ class SpiDebugger:
         self.__enabled = False
 
     def set_address(self, address: int) -> None:
+        """Set the debug core's address
+
+        Args:
+            address (int): address to be set.
+            Must be a 16-bit unsigned integer.
+
+        Raises:
+            ValueError: if address is an invalid value
+            DebuggerException: if the core is already disabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+        """
+
         self.__assert_enabled(self.set_address.__name__)
         if address < 0 or address > 65535:
             raise ValueError(
@@ -79,14 +144,29 @@ class SpiDebugger:
         self.__send_packet('A%04X' % address, r'ACK', 'set address')
 
     def enable_auto_increment(self) -> None:
+        """Enable the debug core's auto increment feature"""
+
         self.__assert_enabled(self.enable_auto_increment.__name__)
         self.__send_packet('IE', r'ACK', 'enable auto increment')
 
     def disable_auto_increment(self) -> None:
+        """Disable the debug core's auto increment feature"""
+        
         self.__assert_enabled(self.enable_auto_increment.__name__)
         self.__send_packet('ID', r'ACK', 'disable auto increment')
 
     def write(self, data: bytes) -> None:
+        """Write a sequence of bytes to the cartridge
+
+        Args:
+            data (bytes): data to write to the cartridge
+
+        Raises:
+            DebuggerException: if the core is already disabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+        """
+
         self.__assert_enabled(self.write.__name__)
         
         for write_burst in scatter(data, 256):
@@ -96,6 +176,21 @@ class SpiDebugger:
                 self.__send_packet(data_string, r'ACK', 'write data')
 
     def read(self, read_length: int) -> bytes:
+        """Read a sequence of bytes from the cartridge
+
+        Args:
+            read_length (int): number of byte to read. Must be 1 or larger.
+
+        Raises:
+            ValueError: if read_length is an invalid value
+            DebuggerException: if the core is already disabled or an
+            unexpected response is received
+            SerialException: if some communication error occurs
+
+        Returns:
+            bytes: bytes read from the cartridge
+        """
+        
         self.__assert_enabled(self.read.__name__)
         if read_length < 1:
             raise ValueError('read length must be at least 1')

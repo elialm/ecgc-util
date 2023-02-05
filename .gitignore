@@ -1,3 +1,4 @@
 __pycache__
 .vscode
 ecgc_util/__main__.py
+dist

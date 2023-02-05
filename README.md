@@ -9,6 +9,8 @@ The tools released under this repository are:
     image or for flashing DRAM.
     The utility works in conjunction with the [ecgc SPI programmer](https://github.com/elialm/ecgc-spi-programmer)
     to communicate with the cartridge.
+    The utility was developed for the programmer's [v1.0.0a](https://github.com/elialm/ecgc-spi-programmer/releases/tag/v1.0.0a)
+    release.
 
 ## Usage information
 
