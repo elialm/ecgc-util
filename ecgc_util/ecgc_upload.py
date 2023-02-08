@@ -3,7 +3,15 @@ from argparse import ArgumentParser
 from sys import stderr
 import re
 import logging
+import time
 
+OUTPUT_LOG_LEVEL = 100
+
+def log_info(ex: DebuggerException | SerialException) -> None:
+    if isinstance(ex, DebuggerException):
+        if ex.is_unexpected_response_error():
+            if ex.actual_response == 'EFLUSH':
+                logging.info('this error typically indicates an electrical error. Check the debugger wiring.')
 
 __SIZE_MODIFIERS = {
     'k': 1024,
@@ -43,6 +51,7 @@ READ_BUFFER_SIZE = 1024
 
 __LOG_LEVELS = (
     logging.WARNING,
+    logging.INFO,
     logging.DEBUG
 )
 
@@ -67,7 +76,8 @@ def main_cli():
     args = parser.parse_args()
 
     # Configure logging
-    logging.basicConfig(format='%(name)s - %(levelname)s - %(message)s',
+    logging.addLevelName(OUTPUT_LOG_LEVEL, 'OUTPUT')
+    logging.basicConfig(format='%(levelname)8s - %(message)s',
                         level=__LOG_LEVELS[min(args.verbose, len(__LOG_LEVELS) - 1)])
 
     # Quit when targets are not implemented
@@ -98,6 +108,9 @@ def main_cli():
         args.size = target_config['max_size']
         logging.warning('given size is larger than allowed, clipping it to {} based on target'.format(compose_size(target_config['max_size'])))
 
+    # Time upload
+    start_time = time.time()
+
     try:
         with SpiDebugger(args.serial_port) as debugger:
             debugger.enable_auto_increment()
@@ -116,7 +129,11 @@ def main_cli():
 
     except (DebuggerException, SerialException) as e:
         logging.critical(e)
+        log_info(e)
         exit(1)
+
+    time_elapsed = time.time() - start_time
+    logging.log(OUTPUT_LOG_LEVEL, 'upload finished successfully in {:.2f} seconds'.format(time_elapsed))
 
 
 if __name__ == '__main__':

@@ -37,9 +37,23 @@ def scatter(collection: Iterable, chunk_size: int) -> Iterator[Iterable]:
 class DebuggerException(Exception):
     """Exception thrown when an error occurs during SpiDebugger operations"""
 
-    def __init__(self, *args: object) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args)
 
+        self.expected_response = kwargs.get('expected_response', None)
+        self.actual_response = kwargs.get('actual_response', None)
+        self.action_description = kwargs.get('action_description', None)
+        self.__is_unexpected_response_error = self.expected_response and self.expected_response and self.action_description
+
+    def __str__(self) -> str:
+        if self.__is_unexpected_response_error:
+            return 'unexpected debugger response during {}: expected \"{}\", got \"{}\"'.format(
+                self.action_description, self.expected_response, self.actual_response)
+        else:
+            return super().__str__()
+
+    def is_unexpected_response_error(self) -> bool:
+        return self.__is_unexpected_response_error
 
 class SpiDebugger:
     """Class for controlling an ecgc SPI programmer via a serial port"""
@@ -216,14 +230,7 @@ class SpiDebugger:
         logging.debug('sent data for \"{}\"'.format(description))
         logging.debug('       sent {}'.format(packet))
 
-        response = self.__read_response()
-        res = re.match(response_format, response)
-
-        if not res:
-            raise DebuggerException('unexpected debugger response during {}: expected \"{}\", got \"{}\"'.format(
-                description, response_format, response))
-
-        return res
+        return self.__match_response(response_format, description)
 
     def __read_response(self) -> str:
         read_bytes = self.__port.read_until(b'\n')
@@ -240,13 +247,12 @@ class SpiDebugger:
         response = self.__read_response()
 
         logging.debug('matching response for \"{}\"'.format(description))
-        logging.debug('   received {}'.format(response))
         logging.debug('   expected {}'.format(expected))
+        logging.debug('   received {}'.format(response))
 
         res = re.match(expected, response)
         if not res:
-            raise DebuggerException(
-                'unexpected response: expected \"{}\", got \"{}\"'.format(expected, response))
+            raise DebuggerException(expected_response=expected, actual_response=response, action_description=description)
 
         return res
 
