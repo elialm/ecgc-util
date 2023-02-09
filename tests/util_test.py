@@ -1,6 +1,6 @@
 import unittest
 
-from ecgc_util.ecgc_upload import parse_size
+from ecgc_util.util import parse_size
 
 class TestParseBytes(unittest.TestCase):
 

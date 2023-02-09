@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecgc-util"
-version = "0.1a"
+version = "0.2a"
 authors = [
     { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
 ]
@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 ecgc-upload = "ecgc_util.ecgc_upload:main_cli"
+ecgc-dump = "ecgc_util.ecgc_dump:main_cli"
 
 [project.urls]
 "Homepage" = "https://github.com/elialm/ecgc-util"
