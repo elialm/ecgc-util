@@ -7,7 +7,7 @@ __SIZE_MODIFIERS = {
 }
 
 def parse_size(size_string: str) -> int:
-    res = re.match(r'([0-9]+)(k|M)?', size_string)
+    res = re.match(r'^([0-9]+)(k|M)?$', size_string)
     if not res:
         raise ValueError(
             'size \"{}\" is not in a supported format'.format(size_string))
@@ -36,16 +36,6 @@ def compose_size(size: int) -> str:
     return str(size)
 
 OUTPUT_LOG_LEVEL = 100
-__LOG_LEVELS = (
-    logging.WARNING,
-    logging.INFO,
-    logging.DEBUG
-)
 
-def configure_logging(verbosity: int) -> None:
-    logging.addLevelName(OUTPUT_LOG_LEVEL, 'OUTPUT')
-    logging.basicConfig(format='%(levelname)8s - %(message)s',
-                        level=__LOG_LEVELS[min(verbosity, len(__LOG_LEVELS) - 1)])
-
-def logging_output(msg: object, *args: object) -> None:
-    logging.log(OUTPUT_LOG_LEVEL, msg, args)
+def logging_output(msg: object) -> None:
+    logging.log(OUTPUT_LOG_LEVEL, msg)

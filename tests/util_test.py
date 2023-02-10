@@ -19,3 +19,7 @@ class TestParseBytes(unittest.TestCase):
     def test_with_mega(self):
         self.assertEqual(parse_size('1M'), 1048576)
         self.assertEqual(parse_size('2M'), 2097152)
+
+    def test_negative_number(self):
+        with self.assertRaises(ValueError):
+            parse_size('-1')
