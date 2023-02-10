@@ -2,7 +2,7 @@ import unittest
 
 from ecgc_util.util import parse_size
 
-class TestParseBytes(unittest.TestCase):
+class TestParseSize(unittest.TestCase):
 
     def test_without_appendix(self):
         self.assertEqual(parse_size('512'), 512)
@@ -23,3 +23,7 @@ class TestParseBytes(unittest.TestCase):
     def test_negative_number(self):
         with self.assertRaises(ValueError):
             parse_size('-1')
+    
+    def test_hexadecimal(self):
+        self.assertEqual(parse_size('0x4000'), parse_size('16k'))
+        self.assertEqual(parse_size('0x0'), 0)

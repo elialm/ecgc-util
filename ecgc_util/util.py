@@ -8,11 +8,16 @@ __SIZE_MODIFIERS = {
 
 def parse_size(size_string: str) -> int:
     res = re.match(r'^([0-9]+)(k|M)?$', size_string)
-    if not res:
-        raise ValueError(
-            'size \"{}\" is not in a supported format'.format(size_string))
+    if res:
+        return int(res.group(1)) * __SIZE_MODIFIERS.get(res.group(2), 1)
 
-    return int(res.group(1)) * __SIZE_MODIFIERS.get(res.group(2), 1)
+    res = re.match(r'^0x([0-9A-Fa-f]+)$', size_string)
+    if res:
+        return int(res.group(1), 16)
+
+    raise ValueError(
+        'size \"{}\" is not in a supported format'.format(size_string))
+    
 
 __SIZE_COMPOSITION_DATA = (
     {
