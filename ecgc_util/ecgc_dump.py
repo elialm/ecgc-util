@@ -71,7 +71,7 @@ def main_cli():
         exit(1)
 
     time_elapsed = time.time() - start_time
-    logging_output('dumped {}B successfully in {:.2f} seconds'.format(compose_size(args.dump_size), time_elapsed))
+    logging_output('dumped {} bytes successfully in {:.2f} seconds'.format(compose_size(args.dump_size), time_elapsed))
 
 if __name__ == '__main__':
     main_cli()
