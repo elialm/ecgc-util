@@ -115,6 +115,14 @@ class TestSpiDebugger(unittest.TestCase):
 
         self.assertEqual(write_data, read_data)
 
+    def test_read_from_address_zero(self):
+        debugger = SpiDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.set_address(0)
+            debugger.enable_auto_increment()
+            debugger.read(1024)
+
     
 class TestScatter(unittest.TestCase):
 
