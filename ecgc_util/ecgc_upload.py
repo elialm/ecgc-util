@@ -8,6 +8,13 @@ import time
 
 READ_BUFFER_SIZE = 1024
 
+OUTPUT_LOG_LEVEL = 100
+__LOG_LEVELS = (
+    logging.WARNING,
+    logging.INFO,
+    logging.DEBUG
+)
+
 __TARGET_CONFIGS = {
     'boot': {
         'max_size': parse_size('4k'),
@@ -28,6 +35,11 @@ def main_cli():
 
     args = parser.parse_args()
 
+    # Configure logging
+    logging.addLevelName(OUTPUT_LOG_LEVEL, 'OUTPUT')
+    logging.basicConfig(format='%(levelname)8s - %(message)s',
+                        level=__LOG_LEVELS[min(args.verbose, len(__LOG_LEVELS) - 1)])
+
     # Quit when targets are not implemented
     if args.target == 'dram' or args.target == 'flash':
         logging.critical('target {} is not yet implemented'.format(args.target))
@@ -43,14 +55,10 @@ def main_cli():
         exit(1)
 
     # Configure size of upload
-    if args.size < 0:
-        logging.critical('negative sizes are not allowed')
-        exit(1)
-    elif args.size == 0:
+    if args.size == 0:
         args.size = target_config['default_size']
         logging.warning('no size given, assuming default size of {} based on target'.format(compose_size(target_config['default_size'])))
         
-
     # Check for options based on target
     if args.size > target_config['max_size']:
         args.size = target_config['max_size']
