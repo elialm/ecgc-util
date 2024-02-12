@@ -1,5 +1,29 @@
+from typing import Iterable, Iterator
 import re
 import logging
+
+def scatter(collection: Iterable, chunk_size: int) -> Iterator[Iterable]:
+    """Scatter an Iterable over multiple Iterables of a max length
+
+    Args:
+        collection (Iterable): Iterable to scatter
+        chunk_size (int): maximum length of each chunk scattered.
+        Must be larger than 1.
+
+    Raises:
+        ValueError: if chunk_size is an invalid value
+
+    Yields:
+        Iterator[Iterable]: slice after slice with a maximum length
+        of chunk_size
+    """
+
+    if chunk_size < 1:
+        raise ValueError('chunk_size must be 1 or higher')
+
+    for i in range(0, len(collection), chunk_size):
+        upper_bound = min(i + chunk_size, len(collection))
+        yield collection[i:upper_bound]
 
 __SIZE_MODIFIERS = {
     'k': 1024,
