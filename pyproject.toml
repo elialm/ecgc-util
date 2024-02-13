@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ecgc-util"
-version = "0.3a"
+version = "0.4a"
 authors = [
     { name="Elijah Almeida Coimbra", email="ealmeidacoimbra@gmail.com" },
 ]
