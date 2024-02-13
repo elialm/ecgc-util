@@ -2,6 +2,8 @@ from .exception_debugging import log_info
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
 from .util import parse_rgbds_int, scatter
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
+from itertools import chain
+from functools import reduce
 import logging
 import re
 import sys
@@ -40,8 +42,7 @@ disable this behaviour and fix the address at the given value, add the
 -f/--fixed flag.
 
 The data is given as a series of bytes separated by a space. Each value must
-fit within an 8-bit unsigned integer. To write unsigned data, add the
--s/--signed flag.
+fit within an 8-bit unsigned integer.
 
 Data can also be given as a repeated pattern. When specifying the -r/--repeat
 flag, one can give a number TIMES which repeats the given data pattern TIMES
@@ -73,8 +74,8 @@ cancelled.
 
 ## Available commands
 
-    - read address [-f/--fixed] [-s/--size SIZE]
-    - write address [-f/--fixed] [-s/--signed] [-r/--repeat TIMES] data
+    - read [-f] [-s SIZE] address
+    - write [-f] [-s] [-r REPEAT] address data [data ...]
 
 ## Integer formatting
 
@@ -120,7 +121,6 @@ def construct_parser_write() -> SubArgumentParser:
     parser.add_argument('address', help='address to write to')
     parser.add_argument('data', nargs='+', help='data to be written')
     parser.add_argument('-f', '--fixed', action='store_true', help='disable address increment on multi-byte operations')
-    parser.add_argument('-s', '--signed', action='store_true', help='switch from only accepting unsigned bytes, to only signed bytes')
     parser.add_argument('-r', '--repeat', default='1', help='repeat the given data for the specified number of times')
 
     return parser
@@ -159,7 +159,10 @@ class DebugShell(cmd.Cmd):
             raise ValueError('size must be a 16-bit unsigned integer')
         
         if not fixed_address and address + size > 0x10000:
-            raise ValueError('given address and size result in operations done outside the cartridge\'s memory map')
+            raise ValueError('given parameters result in operations done outside the cartridge\'s memory map')
+
+    def __decode_ascii(self, c: int, default: str = '?') -> str:
+        return chr(c) if c != None and c > 0x1F and c < 0x7F else default
 
     def __hexdump(self, start_address: int, data: bytes):
         # scatter data into 16 long blocks
@@ -194,10 +197,18 @@ class DebugShell(cmd.Cmd):
             line = f'{aligned_address + (i * 16):04X}  '
             for sub_block in scatter(block, 8):
                 line += ' '.join('--' if b == None else f'{b:02X}' for b in sub_block) + '   '
-            line += '|{}|'.format(''.join(chr(b) if b > 0x1F and b < 0x7F else '.' for b in block))
+            line += '|{}|'.format(''.join(self.__decode_ascii(b, '.') for b in block))
             print(line)
 
         return
+    
+    def __parse_uint8(self, val_str: str) -> int:
+        val = parse_rgbds_int(val_str)
+
+        if val < 0 or val > 0xFF:
+            raise ValueError(f'value \"{val_str}\" is not a valid 8-bit unsigned integer')
+        
+        return val
 
     def do_read(self, arg):
         # parse and sanitise arguments
@@ -222,7 +233,31 @@ class DebugShell(cmd.Cmd):
         self.__parsers['read'].print_help()
 
     def do_write(self, arg):
-        args = self.__parse_args('write', arg)
+        # parse and sanitise arguments
+        try:
+            args = self.__parse_args('write', arg)
+            args.address = parse_rgbds_int(args.address)
+            args.data = bytes([ self.__parse_uint8(b) for b in args.data ])
+            args.repeat = parse_rgbds_int(args.repeat)
+            if args.repeat < 1:
+                raise ValueError('repeat parameter must be a non-zero positive integer')
+            self.__check_address_and_size(args.address, len(args.data) * args.repeat, args.fixed)
+        except (ArgumentError, ValueError) as e:
+            self.__print_error(e)
+            return
+        
+        def extend_bytearray(array: bytearray, data: bytes) -> bytearray:
+            array.extend(data)
+            return array
+
+        # construct write data using repeat parameter
+        write_data = chain(args.data for _ in range(args.repeat))
+        write_data = reduce(extend_bytearray, write_data, bytearray())
+
+        # perform the write
+        self.__debugger.set_auto_increment(not args.fixed)
+        self.__debugger.set_address(args.address)
+        self.__debugger.write(write_data)
 
     def help_write(self):
         self.__parsers['write'].print_help()
