@@ -109,6 +109,16 @@ class UartDebugger:
         self.__assert_enabled(self.set_address.__name__)
         self.__set_address(address)
 
+    def set_auto_increment(self, val: bool) -> None:
+        """Enable/disable auto increment feature based on given value
+
+        Args:
+            val (bool): true = enable, false = disable
+        """
+
+        self.__assert_enabled(self.set_auto_increment.__name__)
+        self.__set_auto_increment(val)
+
     def enable_auto_increment(self) -> None:
         """Enable the debug core's auto increment feature"""
 
@@ -176,13 +186,19 @@ class UartDebugger:
 
         self.__send_packet(packet, expected, 3, 'set address')
 
-    def __enable_auto_increment(self) -> None:
+    def __set_auto_increment(self, val: bool) -> None:
         val = self.__config_reg_read()
-        self.__config_reg_write(val | CONFIG_REG_AUTO_INC)
+
+        if val:
+            self.__config_reg_write(val | CONFIG_REG_AUTO_INC)
+        else:
+            self.__config_reg_write(val & ~CONFIG_REG_AUTO_INC)
+
+    def __enable_auto_increment(self) -> None:
+        self.__set_auto_increment(True)
 
     def __disable_auto_increment(self) -> None:
-        val = self.__config_reg_read()
-        self.__config_reg_write(val & ~CONFIG_REG_AUTO_INC)
+        self.__set_auto_increment(False)
 
     def __write(self, data: bytes) -> None:
         for write_burst in scatter(data, 256):

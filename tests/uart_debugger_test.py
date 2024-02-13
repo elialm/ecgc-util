@@ -1,6 +1,6 @@
 import unittest
 
-from src.uart_debugger import UartDebugger, DebuggerException
+from src.ecgc_util.uart_debugger import UartDebugger, DebuggerException
 
 class TestUartDebugger(unittest.TestCase):
     # Change to whatever COM port the test should use
@@ -62,6 +62,24 @@ class TestUartDebugger(unittest.TestCase):
         with self.assertRaises(ValueError):
             with debugger:
                 debugger.set_address(0x10000)
+
+    def test_set_auto_increment_true(self):
+        debugger = UartDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.set_auto_increment(True)
+
+    def test_set_auto_increment_false(self):
+        debugger = UartDebugger(self.COM_PORT)
+
+        with debugger:
+            debugger.set_auto_increment(False)
+
+    def test_set_auto_increment_core_disabled(self):
+        debugger = UartDebugger(self.COM_PORT)
+
+        with self.assertRaises(DebuggerException):
+            debugger.set_auto_increment(False)
 
     def test_enable_auto_increment(self):
         debugger = UartDebugger(self.COM_PORT)

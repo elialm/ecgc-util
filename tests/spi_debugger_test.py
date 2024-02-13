@@ -1,6 +1,6 @@
 import unittest
 
-from src.spi_debugger import SpiDebugger, DebuggerException
+from src.ecgc_util.spi_debugger import SpiDebugger, DebuggerException
 
 @unittest.skip('SpiDebugger is obsolete and not used anymore')
 class TestSpiDebugger(unittest.TestCase):
