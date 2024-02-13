@@ -22,6 +22,7 @@ def main_cli():
     parser.add_argument('-n', type=str, required=True, help='Number of bytes to dump', dest='dump_size')
     parser.add_argument('-s', default='0', type=str, help='Number of bytes to skip from the start', dest='start_offset')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Increase verbosity of program output')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.3a')
 
     args = parser.parse_args()
 

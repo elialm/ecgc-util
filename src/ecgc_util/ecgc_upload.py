@@ -32,6 +32,7 @@ def main_cli():
     parser.add_argument('-s', '--size', default='0', type=str, help='Number for bytes to upload to the cartridge from the image file. If not given, will either upload entire file or fill the given target (if the file is equal of larger than the target)')
     parser.add_argument('-t', '--target', choices=('boot', 'dram'), required=True, help='Destination target of the image upload')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Increase verbosity of program output')
+    parser.add_argument('--version', action='version', version='%(prog)s 0.3a')
 
     args = parser.parse_args()
 
