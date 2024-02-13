@@ -1,5 +1,5 @@
 class DebuggerException(Exception):
-    """Exception thrown when an error occurs during SpiDebugger operations"""
+    """Exception thrown when an error occurs during Debugger operations"""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args)
