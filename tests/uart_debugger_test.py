@@ -1,6 +1,6 @@
 import unittest
 
-from ecgc_util.uart_debugger import UartDebugger, DebuggerException
+from src.uart_debugger import UartDebugger, DebuggerException
 
 class TestUartDebugger(unittest.TestCase):
     # Change to whatever COM port the test should use

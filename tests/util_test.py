@@ -1,6 +1,6 @@
 import unittest
 
-from ecgc_util.util import parse_size, scatter
+from src.util import parse_size, scatter
 
 class TestParseSize(unittest.TestCase):
 
