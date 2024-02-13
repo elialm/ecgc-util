@@ -1,6 +1,6 @@
 import unittest
 
-from src.util import parse_size, scatter
+from src.ecgc_util.util import parse_size, scatter, parse_rgbds_int
 
 class TestParseSize(unittest.TestCase):
 
@@ -67,3 +67,26 @@ class TestScatter(unittest.TestCase):
         
         with self.assertRaises(ValueError):
             next(scatter(collection, 0))
+
+class TestParseRGBDSInt(unittest.TestCase):
+
+    def test_invalid(self):
+        with self.assertRaises(ValueError):
+            parse_rgbds_int('hello world')
+
+    def test_decimal(self):
+        self.assertEqual(parse_rgbds_int('0'), 0)
+        self.assertEqual(parse_rgbds_int('-1'), -1)
+        self.assertEqual(parse_rgbds_int('69'), 69)
+
+    def test_hexadecimal(self):
+        self.assertEqual(parse_rgbds_int('$00'), 0)
+        self.assertEqual(parse_rgbds_int('$69'), 0x69)
+        self.assertEqual(parse_rgbds_int('$00001000'), 0x1000)
+
+    def test_binary(self):
+        self.assertEqual(parse_rgbds_int('%0'), 0)
+        self.assertEqual(parse_rgbds_int('%1'), 1)
+        self.assertEqual(parse_rgbds_int('%100'), 4)
+        self.assertEqual(parse_rgbds_int('%10001000'), 0x88)
+        
