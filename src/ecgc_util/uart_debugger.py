@@ -187,12 +187,12 @@ class UartDebugger:
         self.__send_packet(packet, expected, 3, 'set address')
 
     def __set_auto_increment(self, val: bool) -> None:
-        val = self.__config_reg_read()
+        reg = self.__config_reg_read()
 
         if val:
-            self.__config_reg_write(val | CONFIG_REG_AUTO_INC)
+            self.__config_reg_write(reg | CONFIG_REG_AUTO_INC)
         else:
-            self.__config_reg_write(val & ~CONFIG_REG_AUTO_INC)
+            self.__config_reg_write(reg & ~CONFIG_REG_AUTO_INC)
 
     def __enable_auto_increment(self) -> None:
         self.__set_auto_increment(True)
