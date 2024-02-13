@@ -49,3 +49,32 @@ options:
   -s START_OFFSET  Number of bytes to skip from the start
   -v, --verbose    Increase verbosity of program output
 ```
+
+## Building
+
+The project can be built into wheels which can be installed on the user's system.
+The the following to build the project into a wheel:
+
+```bash
+python -m build
+```
+
+The build products can then be found in the created `dist` directory.
+
+## Installing
+
+Installing can be done directly from source of with the builded wheels.
+To install directly, run the following (assuming that the current directory is the repo root):
+
+```bash
+python -m pip install .
+``` 
+
+The wheel can be installed with the following:
+
+```bash
+python -m pip install /path/to/wheel.whl
+``` 
+
+After installing, the scripts should be available in your PATH.
+If not, restart your console and try again.
