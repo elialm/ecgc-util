@@ -194,6 +194,7 @@ class DebugShell(cmd.Cmd):
             line = f'{aligned_address + (i * 16):04X}  '
             for sub_block in scatter(block, 8):
                 line += ' '.join('--' if b == None else f'{b:02X}' for b in sub_block) + '   '
+            line += '|{}|'.format(''.join(chr(b) if b > 0x1F and b < 0x7F else '.' for b in block))
             print(line)
 
         return
