@@ -1,5 +1,6 @@
 from .exception_debugging import log_info
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
+from .util import parse_rgbds_int
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
 import logging
 import re
@@ -147,16 +148,37 @@ class DebugShell(cmd.Cmd):
     def __parse_args(self, command: str, arg: str) -> Namespace:
         # try parsing arguments
         args = arg.split(' ') if arg else []
-        try:
-            args = self.__parsers[command].parse_args(args)
-        except ArgumentError as e:
-            self.__print_error(e)
-            return None
-        
+        args = self.__parsers[command].parse_args(args)
         return args
+    
+    def __check_address_and_size(self, address: int, size: int, fixed_address: bool):
+        if address < 0 or address > 0xFFFF:
+            raise ValueError('address must be a 16-bit unsigned integer')
+        
+        if size < 0 or size > 0xFFFF:
+            raise ValueError('size must be a 16-bit unsigned integer')
+        
+        if not fixed_address and address + size > 0x10000:
+            raise ValueError('given address and size result in operations done outside the cartridge\'s memory map')
 
     def do_read(self, arg):
-        args = self.__parse_args('read', arg)
+        # parse and sanitise arguments
+        try:
+            args = self.__parse_args('read', arg)
+            args.address = parse_rgbds_int(args.address)
+            args.size = parse_rgbds_int(args.size)
+            self.__check_address_and_size(args.address, args.size, args.fixed)
+        except (ArgumentError, ValueError) as e:
+            self.__print_error(e)
+            return
+
+        self.__debugger.set_auto_increment(not args.fixed)
+        self.__debugger.set_address(args.address)
+        read_data = self.__debugger.read(args.size)
+
+        hex_string = ' '.join(f'${byte:02X}' for byte in read_data)
+        plural_selection = 'byte' if args.size == 1 else 'bytes'
+        print(f'Successfully read {args.size} {plural_selection}: {hex_string}')
 
     def help_read(self):
         self.__parsers['read'].print_help()
