@@ -78,3 +78,16 @@ python -m pip install /path/to/wheel.whl
 
 After installing, the scripts should be available in your PATH.
 If not, restart your console and try again.
+
+# Running tests
+
+Inside the project, there are automated tests.
+These can be found inside the `tests` directory.
+The tests can be run using the `unittest.TestLoader.discover()` method.
+To invoke this via the console, use the following command:
+
+```bash
+python -m unittest discover tests "*_test.py"
+```
+
+This should run all tests and give the appropriate test results.
