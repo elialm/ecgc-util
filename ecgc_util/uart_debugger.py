@@ -37,7 +37,7 @@ class UartDebugger:
                                     timeout=0.2)
         
         # Flush any ongoing operations
-        self.__send_packet(bytes(258), r'\x01$', 'Initial flush')
+        self.__send_packet(bytes(258), r'\x01$', 258, 'initial flush')
 
         # Clear configuration register for operation in a defined state
         # This also disabled the core
@@ -171,7 +171,7 @@ class UartDebugger:
         
         packet = bytearray(b'\x10')
         packet.extend(address.to_bytes(2, 'little'))
-        expected = r'10' + UartDebugger.__format_bytes(address.to_bytes(2, 'little'), '')
+        expected = r'\x10' + UartDebugger.__bytes_to_regex(address.to_bytes(2, 'little'))
 
         self.__send_packet(packet, expected, 3, 'set address')
 
@@ -188,7 +188,7 @@ class UartDebugger:
             packet = bytearray(b'\x30')
             packet.append(len(write_burst) - 1)
             packet.extend(write_burst)
-            expected = r'31' + '{:02X}'.format(len(write_burst) - 1) + UartDebugger.__format_bytes(write_burst, '')
+            expected = r'\x31' + '\\x{:02x}'.format(len(write_burst) - 1) + UartDebugger.__bytes_to_regex(write_burst)
 
             self.__send_packet(packet, expected, len(write_burst) + 2, 'write data')
 
@@ -201,7 +201,7 @@ class UartDebugger:
         for burst_length in map(lambda i: min(read_length - i, 256), range(0, read_length, 256)):
             packet = bytearray(b'\x20')
             packet.append(burst_length - 1)
-            expected = '21{:02X}'.format(burst_length - 1)
+            expected = '\\x21\\x{:02x}'.format(burst_length - 1)
 
             # First send read command, then read data into buffer
             self.__send_packet(packet, expected, 2, 'read command')
@@ -210,7 +210,7 @@ class UartDebugger:
         return bytes(entire_read)
     
     def __config_reg_read(self) -> int:
-        return int(self.__send_packet(b'\x02', r'03([0-9A-F]{2})', 2, 'config register read').group(1)[0], 16)
+        return self.__send_packet(b'\x02', r'\x03(.)', 2, 'config register read').group(1)[0]
     
     def __config_reg_write(self, value: int) -> None:
         if value < 0 or value > 255:
@@ -218,18 +218,25 @@ class UartDebugger:
         
         packet = bytearray(b'\x04')
         packet.append(value)
-        expected = r'05' + '{:02X}'.format(value)
+        expected = '\\x05\\x{:02x}'.format(value)
 
-        self.__send_packet(bytes(packet), expected, 2, 'config register write')
+        self.__send_packet(packet, expected, 2, 'config register write')
 
     def __format_bytes(bb: bytes, separator: str = ' ') -> str:
         return separator.join('{:02X}'.format(b) for b in bb)
+    
+    def __bytes_to_regex(bb: bytes) -> str:
+        return ''.join('\\x{:02x}'.format(b) for b in bb)
 
-    def __send_packet(self, packet: bytes, response_format: str, expected_length: int, description: str = 'unspecified operation') -> re.Match:
+    def __send_packet(self, packet: bytes, response_format: bytes | str, expected_length: int, description: str = 'unspecified operation') -> re.Match:
         self.__port.write(packet)
 
         logging.debug('sent data for \"{}\"'.format(description))
         logging.debug('       sent {}'.format(UartDebugger.__format_bytes(packet)))
+
+        # encode into ascii if str type
+        if isinstance(response_format, str):
+            response_format = response_format.encode('ascii')
 
         return self.__match_response(response_format, expected_length, description)
 
@@ -244,7 +251,7 @@ class UartDebugger:
 
         return read_bytes
 
-    def __match_response(self, expected_pattern: str | re.Pattern, expected_length: int, description: str) -> re.Match:
+    def __match_response(self, expected_pattern: bytes, expected_length: int, description: str) -> re.Match:
         response = self.__read_response(expected_length)
 
         logging.debug('matching response for \"{}\"'.format(description))
