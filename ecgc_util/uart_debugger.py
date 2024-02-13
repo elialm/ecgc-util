@@ -171,7 +171,7 @@ class UartDebugger:
         
         packet = bytearray(b'\x10')
         packet.extend(address.to_bytes(2, 'little'))
-        expected = r'\x10' + UartDebugger.__bytes_to_regex(address.to_bytes(2, 'little'))
+        expected = r'\x11' + UartDebugger.__bytes_to_regex(address.to_bytes(2, 'little'))
 
         self.__send_packet(packet, expected, 3, 'set address')
 
@@ -258,7 +258,7 @@ class UartDebugger:
         logging.debug('   expected {}'.format(expected_pattern))
         logging.debug('   received {}'.format(UartDebugger.__format_bytes(response)))
 
-        res = re.match(expected_pattern, response)
+        res = re.search(expected_pattern, response)
         if not res:
             raise DebuggerException(expected_response=expected_pattern, actual_response=response, action_description=description)
 
