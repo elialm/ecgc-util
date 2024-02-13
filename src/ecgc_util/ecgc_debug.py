@@ -227,7 +227,7 @@ class DebugShell(cmd.Cmd):
         read_data = self.__debugger.read(args.size)
 
         # print read data
-        self.__hexdump(args.address, read_data)
+        self.__hexdump(0 if args.fixed else args.address, read_data)
 
     def help_read(self):
         self.__parsers['read'].print_help()
