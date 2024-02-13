@@ -1,6 +1,6 @@
 from .exception_debugging import log_info
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
-from .util import parse_rgbds_int
+from .util import parse_rgbds_int, scatter
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
 import logging
 import re
@@ -161,6 +161,43 @@ class DebugShell(cmd.Cmd):
         if not fixed_address and address + size > 0x10000:
             raise ValueError('given address and size result in operations done outside the cartridge\'s memory map')
 
+    def __hexdump(self, start_address: int, data: bytes):
+        # scatter data into 16 long blocks
+        aligned_address = start_address - (start_address % 16)
+        first_block_len = 16 - (start_address - aligned_address)
+        scattered_data = [ data[:first_block_len] ]
+        scattered_data.extend(scatter(data[first_block_len:], 16))
+
+        # convert bytes() objects into int arrays
+        for i, block in enumerate(scattered_data):
+            scattered_data[i] = [ b for b in block ]
+
+        # pad first (if necessary)
+        if len(scattered_data[0]) != 16:
+            # if misaligned, add padding to the left till aligned
+            if aligned_address != start_address:
+                padding_amount = start_address - aligned_address
+                scattered_data[0] = [ None for _ in range(padding_amount) ] + scattered_data[0]
+            
+            # if still not full length, pad to the right till it is
+            if len(scattered_data[0]) != 16:
+                padding_amount = 16 - len(scattered_data[0])
+                scattered_data[0] = scattered_data[0] + [ None for _ in range(padding_amount) ]
+
+        # pad last block (if necessary)
+        if len(scattered_data[-1]) != 16:
+            padding = [ None for _ in range(16 - len(scattered_data[-1])) ]
+            scattered_data[-1] = scattered_data[-1] + padding
+
+        # print output
+        for i, block in enumerate(scattered_data):
+            line = f'{aligned_address + (i * 16):04X}  '
+            for sub_block in scatter(block, 8):
+                line += ' '.join('--' if b == None else f'{b:02X}' for b in sub_block) + '   '
+            print(line)
+
+        return
+
     def do_read(self, arg):
         # parse and sanitise arguments
         try:
@@ -172,13 +209,13 @@ class DebugShell(cmd.Cmd):
             self.__print_error(e)
             return
 
+        # perform the read
         self.__debugger.set_auto_increment(not args.fixed)
         self.__debugger.set_address(args.address)
         read_data = self.__debugger.read(args.size)
 
-        hex_string = ' '.join(f'${byte:02X}' for byte in read_data)
-        plural_selection = 'byte' if args.size == 1 else 'bytes'
-        print(f'Successfully read {args.size} {plural_selection}: {hex_string}')
+        # print read data
+        self.__hexdump(args.address, read_data)
 
     def help_read(self):
         self.__parsers['read'].print_help()
