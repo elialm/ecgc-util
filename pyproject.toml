@@ -23,6 +23,7 @@ dependencies = [
 [project.scripts]
 ecgc-upload = "ecgc_util.ecgc_upload:main_cli"
 ecgc-dump = "ecgc_util.ecgc_dump:main_cli"
+ecgc-debug = "ecgc_util.ecgc_debug:main_cli"
 
 [project.urls]
 "Homepage" = "https://github.com/elialm/ecgc-util"
