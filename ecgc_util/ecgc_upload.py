@@ -1,5 +1,5 @@
 from .exception_debugging import log_info
-from .spi_debugger import SpiDebugger, DebuggerException, SerialException
+from .uart_debugger import UartDebugger, DebuggerException, SerialException
 from .util import parse_size, compose_size, logging_output
 from argparse import ArgumentParser
 import logging
@@ -27,7 +27,7 @@ __TARGET_CONFIGS = {
 
 def main_cli():
     parser = ArgumentParser(prog='ecgc-upload', description='Utility for uploading code to ecgc project cartridge')
-    parser.add_argument('serial_port', help='Serial port of the spi programmer')
+    parser.add_argument('serial_port', help='Serial port of the programmer')
     parser.add_argument('image_file', help='File to upload to the cartridge')
     parser.add_argument('-s', '--size', default='0', type=str, help='Number for bytes to upload to the cartridge from the image file. If not given, will either upload entire file or fill the given target (if the file is equal of larger than the target)')
     parser.add_argument('-t', '--target', choices=('boot', 'dram', 'flash'), required=True, help='Destination target of the image upload')
@@ -68,7 +68,7 @@ def main_cli():
     start_time = time.time()
 
     try:
-        with SpiDebugger(args.serial_port) as debugger:
+        with UartDebugger(args.serial_port) as debugger:
             debugger.enable_auto_increment()
             debugger.set_address(target_config['start_address'])
 

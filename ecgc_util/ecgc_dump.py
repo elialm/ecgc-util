@@ -1,4 +1,4 @@
-from .spi_debugger import SpiDebugger, DebuggerException, SerialException
+from .uart_debugger import UartDebugger, DebuggerException, SerialException
 from .exception_debugging import log_info
 from .util import parse_size, logging_output, compose_size
 from argparse import ArgumentParser
@@ -17,7 +17,7 @@ __LOG_LEVELS = (
 
 def main_cli():
     parser = ArgumentParser(prog='ecgc-dump', description='Utility for dumping memory from ecgc project cartridge')
-    parser.add_argument('serial_port', help='Serial port of the spi programmer')
+    parser.add_argument('serial_port', help='Serial port of the programmer')
     parser.add_argument('output_file', help='File to output the dump')
     parser.add_argument('-n', type=str, required=True, help='Number of bytes to dump', dest='dump_size')
     parser.add_argument('-s', default='0', type=str, help='Number of bytes to skip from the start', dest='start_offset')
@@ -53,7 +53,7 @@ def main_cli():
     start_time = time.time()
 
     try:
-        with SpiDebugger(args.serial_port) as debugger:
+        with UartDebugger(args.serial_port) as debugger:
             debugger.enable_auto_increment()
             debugger.set_address(args.start_offset)
 

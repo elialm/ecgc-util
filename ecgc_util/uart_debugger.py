@@ -1,6 +1,7 @@
 from __future__ import annotations
 from .debugger_exception import DebuggerException
 from .util import scatter
+from serial import SerialException
 import logging
 import serial
 import re
