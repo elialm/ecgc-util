@@ -5,8 +5,6 @@ from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namesp
 from itertools import chain
 from functools import reduce
 import logging
-import re
-import sys
 import cmd
 
 
@@ -30,9 +28,9 @@ A couple of examples using the read command:
     - Read a single byte from address $4000
         > read $4000
     - Read 16 bytes from addresses $0100-$01FF
-        > read $0100 16
+        > read $0100 -s 16
     - Read 256 bytes from address $A100
-        > read $A100 -f 256
+        > read $A100 -f -s 256
 """
 
 __WRITE_EPILOG = """
@@ -53,11 +51,10 @@ A couple of examples using the write command:
         > write $4000 $FF
     - Write the numbers 1-16 to addresses $0100-$01FF
         > write $0100 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
-    - Write 256 bytes to address $A100
-        > write $A100 -f 256
+    - Write 4 bytes of data to address $A100
+        > write $A100 -f $DE $AD $BE $EF
     - Write $00 to addresses $4000-$7FFF
         > write $4000 -r $4000 $00
-
 """
 
 __EPILOG = f"""
