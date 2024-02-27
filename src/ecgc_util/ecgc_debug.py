@@ -1,6 +1,7 @@
 from .exception_debugging import log_info
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
 from .util import parse_rgbds_int, scatter
+from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
 from itertools import chain
 from functools import reduce
@@ -57,6 +58,25 @@ A couple of examples using the write command:
         > write $4000 -r $4000 $00
 """
 
+__SPI_EPILOG = """
+The spi command writes the given data over SPI to the selected device. The
+device can be selected using the cs parameter. By default, the CS pin of the
+given peripheral is asserted on submission of the command and deasserted upon
+completion. CS can be kept asserted using the -k/--keep-selected flag.
+
+The data is given as a series of bytes separated by a space. Each value must
+fit within an 8-bit unsigned integer.
+
+Data can also be given as a repeated pattern. When specifying the -r/--repeat
+flag, one can give a number TIMES which repeats the given data pattern TIMES
+times.
+
+A couple of examples using the spi command:
+    - Read flash unique ID
+        > spi flash $4B $00 $00 $00 $00 -k
+        > spi flash -r 16 $00
+"""
+
 __EPILOG = f"""
 The utility will open a command prompt for entering commands. Usable commands
 are documented below. These commands give the user the ability to peek and poke
@@ -73,6 +93,7 @@ cancelled.
 
     - read [-f] [-s SIZE] address
     - write [-f] [-s] [-r REPEAT] address data [data ...]
+    - spi [-r REPEAT] [-k] {{flash,rtc,sd}} data [data ...]
 
 ## Integer formatting
 
@@ -94,6 +115,10 @@ For example, the 16-bit address $0100 may also be written as $100.
 ## Write command
 
 {__WRITE_EPILOG}
+
+## Spi command
+
+{__SPI_EPILOG}
 """
 
 
@@ -122,19 +147,53 @@ def construct_parser_write() -> SubArgumentParser:
 
     return parser
 
+def construct_parser_spi() -> SubArgumentParser:
+    parser = SubArgumentParser(prog='spi', epilog=__SPI_EPILOG, formatter_class=RawTextHelpFormatter, add_help=False, exit_on_error=False)
+    parser.add_argument('cs', choices=('flash', 'rtc', 'sd'), help='SPI peripheral to select from the choices available')
+    parser.add_argument('data', nargs='+', help='data to be written')
+    parser.add_argument('-k', '--keep-selected', action='store_true', help='keep the CS pin asserted after command completion')
+    parser.add_argument('-r', '--repeat', default='1', help='repeat the given data for the specified number of times')
+
+    return parser
+
 
 class DebugShell(cmd.Cmd):
     intro = 'ecgc-debug 0.4a\ntype help or ? to list commands\n'
     prompt = '> '
     file = None
 
+    __CART_REG_SPI_BASE = 0xA600
+    __CART_REG_SPI_CTRL = __CART_REG_SPI_BASE + 0
+    __CART_REG_SPI_FDIV = __CART_REG_SPI_BASE + 1
+    __CART_REG_SPI_CS = __CART_REG_SPI_BASE + 2
+    __CART_REG_SPI_DATA = __CART_REG_SPI_BASE + 3
+
+    __SPI_DEFAULT_CTRL = (0b00000001).to_bytes(1, 'little')
+    __SPI_DEFAULT_FDIV = (49).to_bytes(1, 'little')
+    __SPI_DEFAULT_CS = (0xFF).to_bytes(1, 'little')
+    __SPI_CS_VALUES = {
+        'flash': (0b11111110).to_bytes(1, 'little'),
+        'rtc': (0b11111101).to_bytes(1, 'little'),
+        'sd': (0b11111011).to_bytes(1, 'little')
+    }
+
     def __init__(self, debugger: UartDebugger) -> None:
         super().__init__()
         self.__debugger = debugger
         self.__parsers = {
             'read': construct_parser_read(),
-            'write': construct_parser_write()
+            'write': construct_parser_write(),
+            'spi': construct_parser_spi()
         }
+
+        # initialise SPI firmware
+        self.__debugger.disable_auto_increment()
+        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CTRL)
+        self.__debugger.write(DebugShell.__SPI_DEFAULT_CTRL)
+        self.__debugger.set_address(DebugShell.__CART_REG_SPI_FDIV)
+        self.__debugger.write(DebugShell.__SPI_DEFAULT_FDIV)
+        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
+        self.__debugger.write(DebugShell.__SPI_DEFAULT_CS)
 
     def __print_error(self, error: Exception | str):
         if isinstance(error, Exception):
@@ -161,7 +220,7 @@ class DebugShell(cmd.Cmd):
     def __decode_ascii(self, c: int, default: str = '?') -> str:
         return chr(c) if c != None and c > 0x1F and c < 0x7F else default
 
-    def __hexdump(self, start_address: int, data: bytes):
+    def __hexdump(self, start_address: int, data: bytes) -> Iterable[str]:
         # scatter data into 16 long blocks
         aligned_address = start_address - (start_address % 16)
         first_block_len = 16 - (start_address - aligned_address)
@@ -189,15 +248,16 @@ class DebugShell(cmd.Cmd):
             padding = [ None for _ in range(16 - len(scattered_data[-1])) ]
             scattered_data[-1] = scattered_data[-1] + padding
 
-        # print output
+        # print output into lines
+        lines = []
         for i, block in enumerate(scattered_data):
             line = f'{aligned_address + (i * 16):04X}  '
             for sub_block in scatter(block, 8):
                 line += ' '.join('--' if b == None else f'{b:02X}' for b in sub_block) + '   '
             line += '|{}|'.format(''.join(self.__decode_ascii(b, '.') for b in block))
-            print(line)
+            lines.append(line)
 
-        return
+        return lines
     
     def __parse_uint8(self, val_str: str) -> int:
         val = parse_rgbds_int(val_str)
@@ -206,6 +266,10 @@ class DebugShell(cmd.Cmd):
             raise ValueError(f'value \"{val_str}\" is not a valid 8-bit unsigned integer')
         
         return val
+    
+    def __extend_bytearray(array: bytearray, data: bytes) -> bytearray:
+        array.extend(data)
+        return array
 
     def do_read(self, arg):
         # parse and sanitise arguments
@@ -224,7 +288,8 @@ class DebugShell(cmd.Cmd):
         read_data = self.__debugger.read(args.size)
 
         # print read data
-        self.__hexdump(0 if args.fixed else args.address, read_data)
+        for line in self.__hexdump(0 if args.fixed else args.address, read_data):
+            print(line)
 
     def help_read(self):
         self.__parsers['read'].print_help()
@@ -242,14 +307,10 @@ class DebugShell(cmd.Cmd):
         except (ArgumentError, ValueError) as e:
             self.__print_error(e)
             return
-        
-        def extend_bytearray(array: bytearray, data: bytes) -> bytearray:
-            array.extend(data)
-            return array
 
         # construct write data using repeat parameter
         write_data = chain(args.data for _ in range(args.repeat))
-        write_data = reduce(extend_bytearray, write_data, bytearray())
+        write_data = reduce(DebugShell.__extend_bytearray, write_data, bytearray())
 
         # perform the write
         self.__debugger.set_auto_increment(not args.fixed)
@@ -258,6 +319,48 @@ class DebugShell(cmd.Cmd):
 
     def help_write(self):
         self.__parsers['write'].print_help()
+
+    def do_spi(self, arg):
+        # parse and sanitise arguments
+        try:
+            args = self.__parse_args('spi', arg)
+            args.data = [ self.__parse_uint8(b) for b in args.data ]
+            args.repeat = parse_rgbds_int(args.repeat)
+            if args.repeat < 1:
+                raise ValueError('repeat parameter must be a non-zero positive integer')
+        except (ArgumentError, ValueError) as e:
+            self.__print_error(e)
+            return
+        
+        # construct write data using repeat parameter
+        write_data = chain(args.data for _ in range(args.repeat))
+        write_data = reduce(DebugShell.__extend_bytearray, write_data, bytearray())
+
+        # perform the SPI writes
+        response = []
+        self.__debugger.disable_auto_increment()
+        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
+        self.__debugger.write(DebugShell.__SPI_CS_VALUES[args.cs])
+        self.__debugger.set_address(DebugShell.__CART_REG_SPI_DATA)
+        for b in write_data:
+            self.__debugger.write(b.to_bytes(1, 'little'))
+            response.append(self.__debugger.read(1)[0])
+
+        # check if cs needs to be released
+        if not args.keep_selected:
+            self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
+            self.__debugger.write(DebugShell.__SPI_DEFAULT_CS)
+
+        # print read data
+        write_lines = self.__hexdump(0, write_data)
+        read_lines = self.__hexdump(0, response)
+        for wline, rline in zip(write_lines, read_lines):
+            print(wline)
+            print(rline)
+            print()
+
+    def help_spi(self):
+        self.__parsers['spi'].print_help()
 
     def do_exit(self, arg):
         """Exits the debugging utility"""
