@@ -149,7 +149,7 @@ def construct_parser_write() -> SubArgumentParser:
 
 def construct_parser_spi() -> SubArgumentParser:
     parser = SubArgumentParser(prog='spi', epilog=__SPI_EPILOG, formatter_class=RawTextHelpFormatter, add_help=False, exit_on_error=False)
-    parser.add_argument('cs', choices=('flash', 'rtc', 'sd'), help='SPI peripheral to select from the choices available')
+    parser.add_argument('cs', choices=('flash', 'rtc', 'sd', 'none'), help='SPI peripheral to select from the choices available')
     parser.add_argument('data', nargs='+', help='data to be written')
     parser.add_argument('-k', '--keep-selected', action='store_true', help='keep the CS pin asserted after command completion')
     parser.add_argument('-r', '--repeat', default='1', help='repeat the given data for the specified number of times')
@@ -174,7 +174,8 @@ class DebugShell(cmd.Cmd):
     __SPI_CS_VALUES = {
         'flash': (0b11111110).to_bytes(1, 'little'),
         'rtc': (0b11111101).to_bytes(1, 'little'),
-        'sd': (0b11111011).to_bytes(1, 'little')
+        'sd': (0b11111011).to_bytes(1, 'little'),
+        'none': (0b11111111).to_bytes(1, 'little')
     }
 
     def __init__(self, debugger: UartDebugger) -> None:
