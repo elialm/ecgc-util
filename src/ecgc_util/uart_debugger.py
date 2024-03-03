@@ -21,7 +21,7 @@ class UartDebugger:
         """Create UartDebugger instance
 
         Args:
-            port (str): serial port of the spi programmer to operate
+            port (str): serial port of the programmer to operate
 
         Raises:
             DebuggerException: if the core is already enabled or an

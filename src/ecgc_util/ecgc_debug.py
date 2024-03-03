@@ -1,5 +1,5 @@
 from .exception_debugging import log_info
-from .uart_debugger import UartDebugger, DebuggerException, SerialException
+from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException
 from .util import parse_rgbds_int, scatter
 from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
@@ -162,23 +162,7 @@ class DebugShell(cmd.Cmd):
     prompt = '> '
     file = None
 
-    __CART_REG_SPI_BASE = 0xA600
-    __CART_REG_SPI_CTRL = __CART_REG_SPI_BASE + 0
-    __CART_REG_SPI_FDIV = __CART_REG_SPI_BASE + 1
-    __CART_REG_SPI_CS = __CART_REG_SPI_BASE + 2
-    __CART_REG_SPI_DATA = __CART_REG_SPI_BASE + 3
-
-    __SPI_DEFAULT_CTRL = (0b00000001).to_bytes(1, 'little')
-    __SPI_DEFAULT_FDIV = (49).to_bytes(1, 'little')
-    __SPI_DEFAULT_CS = (0xFF).to_bytes(1, 'little')
-    __SPI_CS_VALUES = {
-        'flash': (0b11111110).to_bytes(1, 'little'),
-        'rtc': (0b11111101).to_bytes(1, 'little'),
-        'sd': (0b11111011).to_bytes(1, 'little'),
-        'none': (0b11111111).to_bytes(1, 'little')
-    }
-
-    def __init__(self, debugger: UartDebugger) -> None:
+    def __init__(self, debugger: ECGCDebugger) -> None:
         super().__init__()
         self.__debugger = debugger
         self.__parsers = {
@@ -186,15 +170,6 @@ class DebugShell(cmd.Cmd):
             'write': construct_parser_write(),
             'spi': construct_parser_spi()
         }
-
-        # initialise SPI firmware
-        self.__debugger.disable_auto_increment()
-        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CTRL)
-        self.__debugger.write(DebugShell.__SPI_DEFAULT_CTRL)
-        self.__debugger.set_address(DebugShell.__CART_REG_SPI_FDIV)
-        self.__debugger.write(DebugShell.__SPI_DEFAULT_FDIV)
-        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
-        self.__debugger.write(DebugShell.__SPI_DEFAULT_CS)
 
     def __print_error(self, error: Exception | str):
         if isinstance(error, Exception):
@@ -329,6 +304,9 @@ class DebugShell(cmd.Cmd):
             args.repeat = parse_rgbds_int(args.repeat)
             if args.repeat < 1:
                 raise ValueError('repeat parameter must be a non-zero positive integer')
+            args.cs = SpiChipSelect.__members__.get(args.cs.upper(), None)
+            if not args.cs:
+                raise ValueError('cs is not one of the given choices')
         except (ArgumentError, ValueError) as e:
             self.__print_error(e)
             return
@@ -338,23 +316,16 @@ class DebugShell(cmd.Cmd):
         write_data = reduce(DebugShell.__extend_bytearray, write_data, bytearray())
 
         # perform the SPI writes
-        response = []
-        self.__debugger.disable_auto_increment()
-        self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
-        self.__debugger.write(DebugShell.__SPI_CS_VALUES[args.cs])
-        self.__debugger.set_address(DebugShell.__CART_REG_SPI_DATA)
-        for b in write_data:
-            self.__debugger.write(b.to_bytes(1, 'little'))
-            response.append(self.__debugger.read(1)[0])
+        self.__debugger.spi_select(args.cs)
+        read_data = self.__debugger.spi_write(write_data)
 
         # check if cs needs to be released
         if not args.keep_selected:
-            self.__debugger.set_address(DebugShell.__CART_REG_SPI_CS)
-            self.__debugger.write(DebugShell.__SPI_DEFAULT_CS)
+            self.__debugger.spi_deselect()
 
         # print read data
         write_lines = self.__hexdump(0, write_data)
-        read_lines = self.__hexdump(0, response)
+        read_lines = self.__hexdump(0, read_data)
         for wline, rline in zip(write_lines, read_lines):
             print(wline)
             print(rline)
@@ -382,7 +353,7 @@ def main_cli():
                         level=__LOG_LEVELS[min(args.verbose, len(__LOG_LEVELS) - 1)])
 
     try:
-        with UartDebugger(args.serial_port) as debugger:
+        with ECGCDebugger(args.serial_port) as debugger:
             DebugShell(debugger).cmdloop()
     except (DebuggerException, SerialException) as e:
         logging.critical(e)
