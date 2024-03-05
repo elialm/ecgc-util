@@ -97,16 +97,25 @@ class SDResponse:
 
         self.response_type = SDResponseType.R1
 
-    def error_occurred_r1(self) -> bool:
-        return self.r1_parameter_error or self.r1_address_error or self.r1_erase_sequence_error or self.r1_com_crc_error or self.r1_illegal_command or self.r1_erase_reset
-
     def error_occurred(self) -> bool:
         if self.error_occurred_r1():
+            return True
+
+        if self.error_occurred_r2():
             return True
 
         # TODO: handle other response types
 
         return False
+    
+    def error_occurred_r1(self) -> bool:
+        return self.r1_parameter_error or self.r1_address_error or self.r1_erase_sequence_error or self.r1_com_crc_error or self.r1_illegal_command or self.r1_erase_reset
+
+    def error_occurred_r2(self) -> bool:
+        if self.response_type != SDResponseType.R2:
+            return False
+        
+        return self.r2_out_of_range_or_csd_overwrite or self.r2_erase_param or self.r2_wp_violation or self.r2_card_ecc_failed or self.r2_cc_error or self.r2_error or self.r2_wp_erase_skip_or_lock_unlock_cmd_failed or self.r2_card_is_locked
 
     def __assert_response_type(self):
         if self.response_type != SDResponseType.R1:
@@ -131,14 +140,13 @@ class SDResponse:
 
         # decode R2 byte
         response = extra_data[0]
-        self.r2_out_of_range_or_csd_overwite = bool(response & 0b10000000)
+        self.r2_out_of_range_or_csd_overwrite = bool(response & 0b10000000)
         self.r2_erase_param = bool(response & 0b01000000)
         self.r2_wp_violation = bool(response & 0b00100000)
         self.r2_card_ecc_failed = bool(response & 0b00010000)
         self.r2_cc_error = bool(response & 0b00001000)
         self.r2_error = bool(response & 0b00000100)
-        self.r2_wp_erase_skip_or_lock_unlock_cmd_failed = bool(
-            response & 0b00000010)
+        self.r2_wp_erase_skip_or_lock_unlock_cmd_failed = bool(response & 0b00000010)
         self.r2_card_is_locked = bool(response & 0b00000001)
 
         self.response_type = SDResponseType.R2
