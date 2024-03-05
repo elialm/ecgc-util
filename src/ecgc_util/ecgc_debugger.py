@@ -170,7 +170,7 @@ class ECGCDebugger(UartDebugger):
             response.extend(self.spi_write_read(b'\xFF'))
 
             # valid response if MSB is zero
-            if not response & 0x80:
+            if not response[-1] & 0x80:
                 break
 
         return response
