@@ -391,8 +391,23 @@ class DebugShell(cmd.Cmd):
             self.__print_error(e)
             return
         
-        # TODO: properly print response
-        pprint(inspect.getmembers(response))
+        # print R1 response information
+        print('Response R1 stats:')
+        print('    - card is {}in idle state'.format('' if response.r1_in_idle_state else 'not '))
+        if not response.error_occurred_r1():
+            print('    - no error detected')
+        else:
+            print('    - error detected!')
+            print('        - error detected!')
+            print('        - parameter_error        : {}'.format('1' if self.r1_parameter_error else '0'))
+            print('        - address_error          : {}'.format('1' if self.r1_address_error else '0'))
+            print('        - erase_sequence_error   : {}'.format('1' if self.r1_erase_sequence_error else '0'))
+            print('        - com_crc_error          : {}'.format('1' if self.r1_com_crc_error else '0'))
+            print('        - illegal_command        : {}'.format('1' if self.r1_illegal_command else '0'))
+            print('        - erase_reset            : {}'.format('1' if self.r1_erase_reset else '0'))
+            print('        - in_idle_state          : {}'.format('1' if self.r1_in_idle_state else '0'))
+
+        # TODO: properly print other responses
 
     def help_sd(self):
         self.__parsers['sd'].print_help()

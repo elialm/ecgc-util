@@ -225,7 +225,7 @@ class ECGCDebugger(UartDebugger):
                 raise SDException(cmd, arg, response_raw, None)
             
             # raise error if R1 indicates an error
-            if response.error_occurred():
+            if response.error_occurred_r1():
                 raise SDException(cmd, arg, response_raw, response)
 
             # extend response data based on expected response
