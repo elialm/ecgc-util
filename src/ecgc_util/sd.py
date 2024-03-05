@@ -56,6 +56,15 @@ class SDResponse:
         self.r1_in_idle_state = bool(response & 0b00000001)
 
         self.response_type = SDResponseType.R1
+        self.error_with_r1 = bool(response & 0b01111110)
+
+    def error_occurred(self) -> bool:
+        if self.error_with_r1:
+            return True
+        
+        # TODO: handle other response types
+
+        return False
 
     def __assert_response_type(self):
         if self.response_type != SDResponseType.R1:

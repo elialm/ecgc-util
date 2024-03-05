@@ -1,12 +1,14 @@
 from .exception_debugging import log_info
-from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException
+from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException, SDResponseType, SDException
 from .util import parse_rgbds_int, scatter
 from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
 from itertools import chain
 from functools import reduce
+from pprint import pprint
 import logging
 import cmd
+import inspect
 
 
 OUTPUT_LOG_LEVEL = 100
@@ -77,6 +79,27 @@ A couple of examples using the spi command:
         > spi flash -r 16 $00
 """
 
+__SD_EPILOG ="""
+The sd command send the given command to the SD card and reads back the response
+(user specifies which command is expected). CS assertion is done automatically
+in this process, but like the spi command can be kept selected using the -k/--keep-selected
+flag.
+
+The command is specified using its command index and argument. These are given as
+arguments to the sd command. Using this information, the script will build the
+command frame. Its CRC will also be calculated and appended to the cmd frame.
+
+The expected response can be passed using the -r/--expected-response flag. If
+none is given, only the SD card's R1 response is expected.
+
+A couple of examples using the sd command:
+    - Resetting the card with CMD0
+        > sd 0 0
+
+WARNING: familiarity with the SD card SPI protocol is recommended when using this
+command. Misuse could result in corrupted data or destroying the SD card.
+"""
+
 __EPILOG = f"""
 The utility will open a command prompt for entering commands. Usable commands
 are documented below. These commands give the user the ability to peek and poke
@@ -94,6 +117,7 @@ cancelled.
     - read [-f] [-s SIZE] address
     - write [-f] [-s] [-r REPEAT] address data [data ...]
     - spi [-r REPEAT] [-k] {{flash,rtc,sd}} data [data ...]
+    - sd ...
 
 ## Integer formatting
 
@@ -119,6 +143,10 @@ For example, the 16-bit address $0100 may also be written as $100.
 ## Spi command
 
 {__SPI_EPILOG}
+
+## Sd command
+
+{__SD_EPILOG}
 """
 
 
@@ -156,6 +184,15 @@ def construct_parser_spi() -> SubArgumentParser:
 
     return parser
 
+def construct_parser_sd() -> SubArgumentParser:
+    parser = SubArgumentParser(prog='sd', epilog=__SD_EPILOG, formatter_class=RawTextHelpFormatter, add_help=False, exit_on_error=False)
+    parser.add_argument('cmd', help='command index of SD command')
+    parser.add_argument('arg', help='argument of SD command')
+    parser.add_argument('-k', '--keep-selected', action='store_true', help='keep the SD card selected after command completion')
+    parser.add_argument('-r', '--expected-response', choices=('r1', 'r1b', 'r2', 'r3', 'r7'), default='r1', help='SD card response to expect after sending command')
+
+    return parser
+
 
 class DebugShell(cmd.Cmd):
     intro = 'ecgc-debug 0.4a\ntype help or ? to list commands\n'
@@ -168,7 +205,8 @@ class DebugShell(cmd.Cmd):
         self.__parsers = {
             'read': construct_parser_read(),
             'write': construct_parser_write(),
-            'spi': construct_parser_spi()
+            'spi': construct_parser_spi(),
+            'sd': construct_parser_sd()
         }
 
     def __print_error(self, error: Exception | str):
@@ -333,6 +371,36 @@ class DebugShell(cmd.Cmd):
 
     def help_spi(self):
         self.__parsers['spi'].print_help()
+
+    def do_sd(self, arg):
+        # parse and sanitise arguments
+        try:
+            args = self.__parse_args('sd', arg)
+            args.cmd = parse_rgbds_int(args.cmd)
+            if args.cmd < 0 or args.cmd > 0x3F:
+                raise ValueError('cmd must be a 6-bit unsigned integer')
+            args.arg = parse_rgbds_int(args.arg)
+            if args.arg < 0 or args.arg > 0xFFFFFFFF:
+                raise ValueError('arg must be a 32-bit unsigned integer')
+            args.expected_response = SDResponseType.__members__.get(args.expected_response.upper(), None)
+            if not args.expected_response:
+                raise ValueError('expected_response is not one of the given choices')
+        except (ArgumentError, ValueError) as e:
+            self.__print_error(e)
+            return
+        
+        # send command
+        try:
+            response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.expected_response, args.keep_selected)
+        except (SDException, NotImplementedError) as e:
+            self.__print_error(e)
+            return
+        
+        # TODO: properly print response
+        pprint(inspect.getmembers(response))
+
+    def help_sd(self):
+        self.__parsers['sd'].print_help()
 
     def do_exit(self, arg):
         """Exits the debugging utility"""

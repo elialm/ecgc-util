@@ -219,6 +219,10 @@ class ECGCDebugger(UartDebugger):
                 response = SDResponse(response_raw[-1])
             except ValueError:
                 raise SDException(cmd, arg, response_raw, None)
+            
+            # raise error if R1 indicates an error
+            if response.error_occurred():
+                raise SDException(cmd, arg, response_raw, response)
 
             # extend response data based on expected response
             match expected_response:
@@ -233,6 +237,10 @@ class ECGCDebugger(UartDebugger):
                     raise NotImplementedError('expected response R3 is not yet implemented')
                 case SDResponseType.R7:
                     raise NotImplementedError('expected response R7 is not yet implemented')
+        
+            # raise error if response indicates an error
+            if response.error_occurred():
+                raise SDException(cmd, arg, response_raw, response)
         except Exception as e:
             # always deselect target if an exception occurs
             # unless error is NotImplementedError, that is allowed
