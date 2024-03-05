@@ -317,7 +317,7 @@ class DebugShell(cmd.Cmd):
 
         # perform the SPI writes
         self.__debugger.spi_select(args.cs)
-        read_data = self.__debugger.spi_write(write_data)
+        read_data = self.__debugger.spi_write_read(write_data)
 
         # check if cs needs to be released
         if not args.keep_selected:
