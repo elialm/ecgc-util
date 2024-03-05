@@ -1,16 +1,20 @@
+from __future__ import annotations
 from enum import Enum, auto
 from dataclasses import dataclass
 
 class SDException(Exception):
     """Exception thrown when an error occurs during SD card operations"""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, sd_cmd: int, sd_arg: int, sd_response_raw: bytes, sd_response: SDResponse = None, *args: object) -> None:
         super().__init__(*args)
 
-        self.sd_cmd = kwargs.get('sd_cmd', None)
-        self.sd_arg = kwargs.get('sd_arg', None)
-        self.sd_response_raw = kwargs.get('sd_response_raw', None)
-        self.sd_response = kwargs.get('sd_response', None)
+        self.sd_cmd = sd_cmd
+        self.sd_arg = sd_arg
+        self.sd_response_raw = sd_response_raw
+        self.sd_response = sd_response
+
+    def __str__(self) -> str:
+        return f'error responding to CMD{self.sd_cmd} with arg 0x{self.sd_arg:08X}: received {"".join([hex(b).upper() for b in self.sd_response_raw])}'
 
 
 class SDResponseType(Enum):

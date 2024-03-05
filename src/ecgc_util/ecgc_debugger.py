@@ -66,6 +66,10 @@ class ECGCDebugger(UartDebugger):
         Args:
             freq (int): desired SPI frequency
 
+        Raises:
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
+
         Returns:
             int: actual programmed speed closest to the desired speed
         """
@@ -77,6 +81,10 @@ class ECGCDebugger(UartDebugger):
 
         Args:
             target (SpiChipSelect): SPI device to select
+
+        Raises:
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
         """
 
         self.disable_auto_increment()
@@ -84,7 +92,12 @@ class ECGCDebugger(UartDebugger):
         self.write(target.value)
 
     def spi_deselect(self):
-        """Deselect any previously selected SPI devices"""
+        """Deselect any previously selected SPI devices
+        
+        Raises:
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
+        """
 
         self.disable_auto_increment()
         self.set_address(ECGCDebugger.__CART_REG_SPI_CS)
@@ -99,6 +112,10 @@ class ECGCDebugger(UartDebugger):
 
         Args:
             write_data (bytes): data to write over the SPI bus
+
+        Raises:
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
 
         Returns:
             bytes: data read back after each byte sent
@@ -125,6 +142,10 @@ class ECGCDebugger(UartDebugger):
 
         Args:
             write_data (bytes): data to write over the SPI bus
+
+        Raises:
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
         """
 
         self.disable_auto_increment()
@@ -155,6 +176,25 @@ class ECGCDebugger(UartDebugger):
         return response
 
     def sd_send_cmd(self, cmd: int, arg: int, expected_response: SDResponseType = SDResponseType.R1, keep_selected: bool = False) -> SDResponse:
+        """Send given SD card command and return response information
+
+        Args:
+            cmd (int): cmd index
+            arg (int): cmd argument
+            expected_response (SDResponseType, optional): response to be expected after sending command. Defaults to SDResponseType.R1.
+            keep_selected (bool, optional): keep the CS line selected after exiting method. Defaults to False.
+
+        Raises:
+            ValueError: if cmd is not a 6-bit unsigned integer
+            ValueError: if arg is not a 32-bit unsigned integer
+            SDException: if an error occurs during reading of response
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
+
+        Returns:
+            SDResponse: response object containing response data
+        """
+        
         if cmd < 0 or cmd > 0x3F:
             raise ValueError('cmd must be a 6-bit unsigned integer')
         
@@ -175,7 +215,10 @@ class ECGCDebugger(UartDebugger):
 
             # R1 is always expected, therefore at least read that
             response_raw = self.__try_read_sd_response_r1()
-            response = SDResponse(response_raw[-1])
+            try:
+                response = SDResponse(response_raw[-1])
+            except ValueError:
+                raise SDException(cmd, arg, response_raw, None)
 
             # extend response data based on expected response
             match expected_response:
