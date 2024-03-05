@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
-from .sd import SDResponseType, SDException, SDResponse
+from .sd import SDResponseType, SDException, SDResponse, sd_command_get_expected_response
 from enum import Enum
 
 class SpiChipSelect(Enum):
@@ -175,13 +175,12 @@ class ECGCDebugger(UartDebugger):
 
         return response
 
-    def sd_send_cmd(self, cmd: int, arg: int, expected_response: SDResponseType = SDResponseType.R1, keep_selected: bool = False) -> SDResponse:
+    def sd_send_cmd(self, cmd: int, arg: int, keep_selected: bool = False) -> SDResponse:
         """Send given SD card command and return response information
 
         Args:
             cmd (int): cmd index
             arg (int): cmd argument
-            expected_response (SDResponseType, optional): response to be expected after sending command. Defaults to SDResponseType.R1.
             keep_selected (bool, optional): keep the CS line selected after exiting method. Defaults to False.
 
         Raises:
@@ -200,6 +199,11 @@ class ECGCDebugger(UartDebugger):
         
         if arg < 0 or arg > 0xFFFFFFFF:
             raise ValueError('arg must be a 32-bit unsigned integer')
+
+        # check cmd index and if valid, get expected response
+        expected_response = sd_command_get_expected_response(cmd)
+        if expected_response in (SDResponseType.R1B, SDResponseType.R3, SDResponseType.R7):
+            raise NotImplementedError('responses R1b, R3 and R7 are not yet implemented')
 
         # build command frame
         cmd_frame = bytearray()

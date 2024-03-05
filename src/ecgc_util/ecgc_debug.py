@@ -81,9 +81,8 @@ A couple of examples using the spi command:
 
 __SD_EPILOG ="""
 The sd command send the given command to the SD card and reads back the response
-(user specifies which command is expected). CS assertion is done automatically
-in this process, but like the spi command can be kept selected using the -k/--keep-selected
-flag.
+(depends on the given command). CS assertion is done automatically in this process,
+but like the spi command can be kept selected using the -k/--keep-selected flag.
 
 The command is specified using its command index and argument. These are given as
 arguments to the sd command. Using this information, the script will build the
@@ -189,7 +188,6 @@ def construct_parser_sd() -> SubArgumentParser:
     parser.add_argument('cmd', help='command index of SD command')
     parser.add_argument('arg', help='argument of SD command')
     parser.add_argument('-k', '--keep-selected', action='store_true', help='keep the SD card selected after command completion')
-    parser.add_argument('-r', '--expected-response', choices=('r1', 'r1b', 'r2', 'r3', 'r7'), default='r1', help='SD card response to expect after sending command')
 
     return parser
 
@@ -382,9 +380,6 @@ class DebugShell(cmd.Cmd):
             args.arg = parse_rgbds_int(args.arg)
             if args.arg < 0 or args.arg > 0xFFFFFFFF:
                 raise ValueError('arg must be a 32-bit unsigned integer')
-            args.expected_response = SDResponseType.__members__.get(args.expected_response.upper(), None)
-            if not args.expected_response:
-                raise ValueError('expected_response is not one of the given choices')
         except (ArgumentError, ValueError) as e:
             self.__print_error(e)
             return

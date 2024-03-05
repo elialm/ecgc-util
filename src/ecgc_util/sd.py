@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from dataclasses import dataclass
 
+
 class SDException(Exception):
     """Exception thrown when an error occurs during SD card operations"""
 
@@ -25,6 +26,41 @@ class SDResponseType(Enum):
     R2 = auto()
     R3 = auto()
     R7 = auto()
+
+__SD_COMMAND_EXPECTED_RESPONSES = {
+    0: SDResponseType.R1,
+    1: SDResponseType.R1,
+    6: SDResponseType.R1,
+    8: SDResponseType.R7,
+    9: SDResponseType.R1,
+    10: SDResponseType.R1,
+    12: SDResponseType.R1B,
+    13: SDResponseType.R2,
+    16: SDResponseType.R1,
+    17: SDResponseType.R1,
+    18: SDResponseType.R1,
+    24: SDResponseType.R1,
+    25: SDResponseType.R1,
+    27: SDResponseType.R1,
+    28: SDResponseType.R1B,
+    29: SDResponseType.R1B,
+    30: SDResponseType.R1,
+    32: SDResponseType.R1,
+    33: SDResponseType.R1,
+    38: SDResponseType.R1B,
+    42: SDResponseType.R1,
+    55: SDResponseType.R1,
+    56: SDResponseType.R1,
+    58: SDResponseType.R3,
+    59: SDResponseType.R1,
+}
+
+def sd_command_get_expected_response(cmd_index: int) -> SDResponseType:
+    expected_response = __SD_COMMAND_EXPECTED_RESPONSES.get(cmd_index, None)
+    if cmd_index == None:
+        raise ValueError('given cmd_index does not belong to a valid SD command in SPI mode')
+    
+    return expected_response
 
 class SDResponse:
     """Class containing the fields of SD SPI response R1 and can be extended with longer responses"""
