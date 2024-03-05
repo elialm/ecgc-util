@@ -386,7 +386,7 @@ class DebugShell(cmd.Cmd):
         
         # send command
         try:
-            response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.expected_response, args.keep_selected)
+            response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.keep_selected)
         except (SDException, NotImplementedError) as e:
             self.__print_error(e)
             return
