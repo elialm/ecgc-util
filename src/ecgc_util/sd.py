@@ -15,7 +15,7 @@ class SDException(Exception):
         self.sd_response = sd_response
 
     def __str__(self) -> str:
-        return f'error responding to CMD{self.sd_cmd} with arg 0x{self.sd_arg:08X}: received {"".join([hex(b).upper() for b in self.sd_response_raw])}'
+        return f'error responding to CMD{self.sd_cmd} with arg 0x{self.sd_arg:08X}: received {" ".join([hex(b).upper().replace("X", "x") for b in self.sd_response_raw])}'
 
 
 class SDResponseType(Enum):
