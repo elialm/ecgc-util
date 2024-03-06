@@ -117,6 +117,23 @@ class SDResponse:
         return self.r1_parameter_error or self.r1_address_error or self.r1_erase_sequence_error or self.r1_com_crc_error or self.r1_illegal_command or self.r1_erase_reset
     
 
+class SDResponseR1B(SDResponse):
+    """Class containing the fields of SD SPI response R1b"""
+
+    def __init__(self, r1: SDResponse, extra_data: bytes) -> None:
+        """Extend SD response with R1b fields
+
+        Args:
+            r1 (SDResponse): base R1 response
+            extra_data (bytes): extra data of the R1b response
+        """
+
+        super().__init__(r1)
+
+        self.r1b_busy = any(map(lambda d: d == 0, extra_data))
+        self.response_type = SDResponseType.R1B
+
+
 class SDResponseR2(SDResponse):
     """Class containing the fields of SD SPI response R2"""
 
@@ -155,3 +172,68 @@ class SDResponseR2(SDResponse):
             return True
     
         return self.r2_out_of_range_or_csd_overwrite or self.r2_erase_param or self.r2_wp_violation or self.r2_card_ecc_failed or self.r2_cc_error or self.r2_error or self.r2_wp_erase_skip_or_lock_unlock_cmd_failed or self.r2_card_is_locked
+
+
+class SDResponseR3(SDResponse):
+    """Class containing the fields of SD SPI response R3"""
+
+    __VDD_RANGE_BOUNDS = [
+        2.7,
+        2.8,
+        2.9,
+        3.0,
+        3.1,
+        3.2,
+        3.3,
+        3.4,
+        3.5,
+        3.6,
+    ]
+
+    def __init__(self, r1: SDResponse, extra_data: bytes) -> None:
+        """Extend SD response with R3 fields
+
+        Args:
+            r1 (SDResponse): base R1 response
+            extra_data (bytes): extra data of the R3 response
+
+        Raises:
+            ValueError: if the supplied extra_data is of incorrect length
+        """
+
+        super().__init__(r1)
+
+        if len(extra_data) != 4:
+            raise ValueError(
+                f'expected 4 bytes of extra data decoding R3, got {len(extra_data)}')
+
+        # decode R3 bytes
+        self.raw_ocr = int.from_bytes(extra_data, 'big')
+        self.r3_low_vdd_range = bool(self.raw_ocr & (1 << 7))
+        self.r3_s19a = bool(self.raw_ocr & (1 << 24))
+        self.r3_co2t = bool(self.raw_ocr & (1 << 27))
+        self.r3_uhs2_status = bool(self.raw_ocr & (1 << 29))
+        self.r3_ccs = bool(self.raw_ocr & (1 << 30))
+        self.r3_busy = not bool(self.raw_ocr & (1 << 31))
+        self.r3_vdd_range = self.__decode_vdd_range((self.raw_ocr >> 15) & 0x1FF)
+
+        self.response_type = SDResponseType.R3
+
+    def __decode_vdd_range(self, vdd_range: int) -> tuple[float, float]:
+        # get lower bound
+        for i in range(9):
+            lower_bound = SDResponseR3.__VDD_RANGE_BOUNDS[i]
+            if vdd_range & (1 << i):
+                break
+
+        # get upper bound
+        for i in range(10, 0, -1):
+            upper_bound = SDResponseR3.__VDD_RANGE_BOUNDS[i]
+            if vdd_range & (1 << i):
+                break
+
+        # sanity check on the voltage range
+        if lower_bound > upper_bound:
+            raise ValueError('invalid voltage range')
+
+        return (lower_bound, upper_bound)
