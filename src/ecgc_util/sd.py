@@ -67,7 +67,7 @@ def sd_command_get_expected_response(cmd_index: int) -> SDResponseType:
 
 
 class SDResponse:
-    """Class containing the fields of SD SPI response R1 and can be extended with longer responses"""
+    """Class containing the fields of SD SPI response R1"""
 
     def __init__(self, response: int) -> None:
         """Construct response object from response byte
@@ -97,43 +97,42 @@ class SDResponse:
 
         self.response_type = SDResponseType.R1
 
+    def __init__(self, copy: SDResponse) -> None:
+        """Creates a copy of the given SDResponse
+
+        Args:
+            copy (SDResponse): response to copy
+        """
+
+        self.r1_parameter_error = copy.r1_parameter_error
+        self.r1_address_error = copy.r1_address_error
+        self.r1_erase_sequence_error = copy.r1_erase_sequence_error
+        self.r1_com_crc_error = copy.r1_com_crc_error
+        self.r1_illegal_command = copy.r1_illegal_command
+        self.r1_erase_reset = copy.r1_erase_reset
+        self.r1_in_idle_state = copy.r1_in_idle_state
+        self.response_type = SDResponseType.R1
+
     def error_occurred(self) -> bool:
-        if self.error_occurred_r1():
-            return True
-
-        if self.error_occurred_r2():
-            return True
-
-        # TODO: handle other response types
-
-        return False
-    
-    def error_occurred_r1(self) -> bool:
         return self.r1_parameter_error or self.r1_address_error or self.r1_erase_sequence_error or self.r1_com_crc_error or self.r1_illegal_command or self.r1_erase_reset
+    
 
-    def error_occurred_r2(self) -> bool:
-        if self.response_type != SDResponseType.R2:
-            return False
-        
-        return self.r2_out_of_range_or_csd_overwrite or self.r2_erase_param or self.r2_wp_violation or self.r2_card_ecc_failed or self.r2_cc_error or self.r2_error or self.r2_wp_erase_skip_or_lock_unlock_cmd_failed or self.r2_card_is_locked
+class SDResponseR2(SDResponse):
+    """Class containing the fields of SD SPI response R2"""
 
-    def __assert_response_type(self):
-        if self.response_type != SDResponseType.R1:
-            raise ValueError(
-                f'object with response type {self.response_type.name} cannot be extended')
-
-    def extend_with_r2(self, extra_data: bytes):
+    def __init__(self, r1: SDResponse, extra_data: bytes) -> None:
         """Extend SD response with R2 fields
 
         Args:
-            extra_data (bytes): extra byte containing the content from R2
+            r1 (SDResponse): base R1 response
+            extra_data (bytes): extra data of the R2 response
 
         Raises:
-            ValueError: if object has already been extended
-            or extra data is not 1 byte long
+            ValueError: if the supplied extra_data is of incorrect length
         """
 
-        self.__assert_response_type()
+        super().__init__(r1)
+
         if len(extra_data) != 1:
             raise ValueError(
                 f'expected 1 byte of extra data decoding R2, got {len(extra_data)}')
@@ -150,3 +149,9 @@ class SDResponse:
         self.r2_card_is_locked = bool(response & 0b00000001)
 
         self.response_type = SDResponseType.R2
+
+    def error_occurred(self) -> bool:
+        if super().error_occurred():
+            return True
+    
+        return self.r2_out_of_range_or_csd_overwrite or self.r2_erase_param or self.r2_wp_violation or self.r2_card_ecc_failed or self.r2_cc_error or self.r2_error or self.r2_wp_erase_skip_or_lock_unlock_cmd_failed or self.r2_card_is_locked
