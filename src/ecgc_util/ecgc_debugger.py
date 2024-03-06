@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
-from .sd import SDResponseType, SDException, SDResponse, SDResponseR2, SDResponseR3, sd_command_get_expected_response
+from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, sd_command_get_expected_response
 from enum import Enum
 
 class SpiChipSelect(Enum):

@@ -1,5 +1,5 @@
 from .exception_debugging import log_info
-from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException, SDResponseType, SDException
+from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException, SDResponseType, SDException, SDResponseR1B
 from .util import parse_rgbds_int, scatter
 from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
@@ -394,40 +394,46 @@ class DebugShell(cmd.Cmd):
         # print R1 response information
         print('Response R1 stats:')
         print('    - card is {}in idle state'.format('' if response.r1_in_idle_state else 'not '))
-        if not response.error_occurred_r1():
+        if not response.error_occurred():
             print('    - no errors detected')
         else:
             print('    - error(s) detected!')
             print('        - error detected!')
-            print('        - parameter_error        : {}'.format('1' if self.r1_parameter_error else '0'))
-            print('        - address_error          : {}'.format('1' if self.r1_address_error else '0'))
-            print('        - erase_sequence_error   : {}'.format('1' if self.r1_erase_sequence_error else '0'))
-            print('        - com_crc_error          : {}'.format('1' if self.r1_com_crc_error else '0'))
-            print('        - illegal_command        : {}'.format('1' if self.r1_illegal_command else '0'))
-            print('        - erase_reset            : {}'.format('1' if self.r1_erase_reset else '0'))
+            print('        - parameter_error        : {}'.format('1' if response.r1_parameter_error else '0'))
+            print('        - address_error          : {}'.format('1' if response.r1_address_error else '0'))
+            print('        - erase_sequence_error   : {}'.format('1' if response.r1_erase_sequence_error else '0'))
+            print('        - com_crc_error          : {}'.format('1' if response.r1_com_crc_error else '0'))
+            print('        - illegal_command        : {}'.format('1' if response.r1_illegal_command else '0'))
+            print('        - erase_reset            : {}'.format('1' if response.r1_erase_reset else '0'))
 
         # TODO: properly print other responses
 
         # print stats based on type response
         match response.response_type:
             case SDResponseType.R1B:
-                pass
+                print('    - cart is {}busy'.format('' if response.r1b_busy else 'not '))
             case SDResponseType.R2:
                 print('Response R2 stats:')
-                if not response.error_occurred_r1():
+                if not response.error_occurred():
                     print('    - no errors detected')
                 else:
                     print('    - error(s) detected!')
-                    print('        - out_of_range_or_csd_overwrite              : {}'.format('1' if self.r2_out_of_range_or_csd_overwrite else '0'))
-                    print('        - erase_param                                : {}'.format('1' if self.r2_erase_param else '0'))
-                    print('        - wp_violation                               : {}'.format('1' if self.r2_wp_violation else '0'))
-                    print('        - card_ecc_failed                            : {}'.format('1' if self.r2_card_ecc_failed else '0'))
-                    print('        - cc_error                                   : {}'.format('1' if self.r2_cc_error else '0'))
-                    print('        - error                                      : {}'.format('1' if self.r2_error else '0'))
-                    print('        - wp_erase_skip_or_lock_unlock_cmd_failed    : {}'.format('1' if self.r2_wp_erase_skip_or_lock_unlock_cmd_failed else '0'))
-                    print('        - card_is_locked                             : {}'.format('1' if self.r2_card_is_locked else '0'))
+                    print('        - out_of_range_or_csd_overwrite              : {}'.format('1' if response.r2_out_of_range_or_csd_overwrite else '0'))
+                    print('        - erase_param                                : {}'.format('1' if response.r2_erase_param else '0'))
+                    print('        - wp_violation                               : {}'.format('1' if response.r2_wp_violation else '0'))
+                    print('        - card_ecc_failed                            : {}'.format('1' if response.r2_card_ecc_failed else '0'))
+                    print('        - cc_error                                   : {}'.format('1' if response.r2_cc_error else '0'))
+                    print('        - error                                      : {}'.format('1' if response.r2_error else '0'))
+                    print('        - wp_erase_skip_or_lock_unlock_cmd_failed    : {}'.format('1' if response.r2_wp_erase_skip_or_lock_unlock_cmd_failed else '0'))
+                    print('        - card_is_locked                             : {}'.format('1' if response.r2_card_is_locked else '0'))
             case SDResponseType.R3:
-                pass
+                print('Response R3 stats:')
+                print('    - S19A           : {}'.format('1' if response.r3_s19a else '0'))
+                print('    - CO2T           : {}'.format('1' if response.r3_co2t else '0'))
+                print('    - UHS-II Status  : {}'.format('1' if response.r3_uhs2_status else '0'))
+                print('    - CCS            : {}'.format('1' if response.r3_ccs else '0'))
+                print('    - busy           : {}'.format('True' if response.r3_busy else 'False'))
+                print('    - VDD Range      : {} - {}'.format(response.r3_vdd_range[0], response.r3_vdd_range[1]))
             case SDResponseType.R7:
                 pass
 
