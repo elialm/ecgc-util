@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
-from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, sd_command_get_expected_response
+from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, SDResponseR7, sd_command_get_expected_response
 from enum import Enum
 
 class SpiChipSelect(Enum):
@@ -233,7 +233,8 @@ class ECGCDebugger(UartDebugger):
                 case SDResponseType.R1:
                     pass
                 case SDResponseType.R1B:
-                    raise NotImplementedError('expected response R1B is not yet implemented')
+                    response_raw.extend(self.spi_write_read(b'\xFF'))
+                    response = SDResponseR1B(response, response_raw[-1:])
                 case SDResponseType.R2:
                     response_raw.extend(self.spi_write_read(b'\xFF'))
                     response = SDResponseR2(response, response_raw[-1:])
@@ -241,7 +242,8 @@ class ECGCDebugger(UartDebugger):
                     response_raw.extend(self.spi_write_read(b'\xFF\xFF\xFF\xFF'))
                     response = SDResponseR3(response, response_raw[-4:])
                 case SDResponseType.R7:
-                    raise NotImplementedError('expected response R7 is not yet implemented')
+                    response_raw.extend(self.spi_write_read(b'\xFF\xFF\xFF\xFF'))
+                    response = SDResponseR7(response, response_raw[-4:])
         
             # raise error if response indicates an error
             if response.error_occurred():

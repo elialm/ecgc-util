@@ -406,8 +406,6 @@ class DebugShell(cmd.Cmd):
             print('        - illegal_command        : {}'.format('1' if response.r1_illegal_command else '0'))
             print('        - erase_reset            : {}'.format('1' if response.r1_erase_reset else '0'))
 
-        # TODO: properly print other responses
-
         # print stats based on type response
         match response.response_type:
             case SDResponseType.R1B:
@@ -435,8 +433,11 @@ class DebugShell(cmd.Cmd):
                 print('    - busy           : {}'.format('True' if response.r3_busy else 'False'))
                 print('    - VDD Range      : {} - {}'.format(response.r3_vdd_range[0], response.r3_vdd_range[1]))
             case SDResponseType.R7:
-                pass
-
+                print('Response R7 stats:')
+                print('    - command_version    : {}'.format(response.r7_command_version))
+                print('    - voltage_accepted   : {}'.format(self.r7_voltage_accepted.name))
+                print('    - check_pattern      : 0x{:02X}'.format(self.r7_check_pattern))
+                print('    - check pattern {}'.format('matches' if self.r7_check_pattern == (args.arg & 0xFF) else 'does not match'))
 
     def help_sd(self):
         self.__parsers['sd'].print_help()
