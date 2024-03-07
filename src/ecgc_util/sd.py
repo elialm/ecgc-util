@@ -237,3 +237,63 @@ class SDResponseR3(SDResponse):
             raise ValueError('invalid voltage range')
 
         return (lower_bound, upper_bound)
+    
+
+class SDResponseR7VoltageAccepted(Enum):
+    FROM_2V7_TO_3V6 = auto()
+    LOW_VOLTAGE_RANGE = auto()
+    RESERVED = auto()
+    NOT_DEFINED = auto()
+
+    def from_raw_response(response: int) -> SDResponseR7VoltageAccepted:
+        """Get correct SDResponseR7VoltageAccepted from raw R7 response
+
+        Args:
+            response (int): raw R7 response
+
+        Returns:
+            SDResponseR7VoltageAccepted: interpreted voltage accepted
+        """
+
+        voltage_accepted = (response >> 8) & 0xF
+        match voltage_accepted:
+            case 0b0000:
+                return SDResponseR7VoltageAccepted.NOT_DEFINED
+            case 0b0001:
+                return SDResponseR7VoltageAccepted.FROM_2V7_TO_3V6
+            case 0b0010:
+                return SDResponseR7VoltageAccepted.LOW_VOLTAGE_RANGE
+            case 0b0100:
+                return SDResponseR7VoltageAccepted.RESERVED
+            case 0b1000:
+                return SDResponseR7VoltageAccepted.RESERVED
+            case _:
+                return SDResponseR7VoltageAccepted.NOT_DEFINED
+
+class SDResponseR7(SDResponse):
+    """Class containing the fields of SD SPI response R7"""
+
+    def __init__(self, r1: SDResponse, extra_data: bytes) -> None:
+        """Extend SD response with R7 fields
+
+        Args:
+            r1 (SDResponse): base R1 response
+            extra_data (bytes): extra data of the R7 response
+
+        Raises:
+            ValueError: if the supplied extra_data is of incorrect length
+        """
+
+        super().__init__(r1)
+
+        if len(extra_data) != 4:
+            raise ValueError(
+                f'expected 4 bytes of extra data decoding R7, got {len(extra_data)}')
+
+        # decode R7 bytes
+        self.raw_r7 = int.from_bytes(extra_data, 'big')
+        self.r7_command_version = (self.raw_r7 >> 28) & 0xF
+        self.r7_voltage_accepted = SDResponseR7VoltageAccepted.from_raw_response(self.raw_r7)
+        self.r7_check_pattern = self.raw_r7 & 0xFF
+
+        self.response_type = SDResponseType.R7
