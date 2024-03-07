@@ -202,8 +202,6 @@ class ECGCDebugger(UartDebugger):
 
         # check cmd index and if valid, get expected response
         expected_response = sd_command_get_expected_response(cmd)
-        if expected_response in (SDResponseType.R1B, SDResponseType.R3, SDResponseType.R7):
-            raise NotImplementedError('responses R1b, R3 and R7 are not yet implemented')
 
         # build command frame
         cmd_frame = bytearray()
@@ -250,9 +248,7 @@ class ECGCDebugger(UartDebugger):
                 raise SDException(cmd, arg, response_raw, response)
         except Exception as e:
             # always deselect target if an exception occurs
-            # unless error is NotImplementedError, that is allowed
-            if not isinstance(e, NotImplementedError):
-                keep_selected = False
+            keep_selected = False
             raise e
         finally:
             if not keep_selected:
