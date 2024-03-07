@@ -87,6 +87,7 @@ class SDResponse:
             raise ValueError('MSB is not low')
 
         # decoding R1 byte
+        self.raw_r1 = response
         self.r1_parameter_error = bool(response & 0b01000000)
         self.r1_address_error = bool(response & 0b00100000)
         self.r1_erase_sequence_error = bool(response & 0b00010000)
@@ -95,22 +96,6 @@ class SDResponse:
         self.r1_erase_reset = bool(response & 0b00000010)
         self.r1_in_idle_state = bool(response & 0b00000001)
 
-        self.response_type = SDResponseType.R1
-
-    def __init__(self, copy: SDResponse) -> None:
-        """Creates a copy of the given SDResponse
-
-        Args:
-            copy (SDResponse): response to copy
-        """
-
-        self.r1_parameter_error = copy.r1_parameter_error
-        self.r1_address_error = copy.r1_address_error
-        self.r1_erase_sequence_error = copy.r1_erase_sequence_error
-        self.r1_com_crc_error = copy.r1_com_crc_error
-        self.r1_illegal_command = copy.r1_illegal_command
-        self.r1_erase_reset = copy.r1_erase_reset
-        self.r1_in_idle_state = copy.r1_in_idle_state
         self.response_type = SDResponseType.R1
 
     def error_occurred(self) -> bool:
@@ -128,7 +113,7 @@ class SDResponseR1B(SDResponse):
             extra_data (bytes): extra data of the R1b response
         """
 
-        super().__init__(r1)
+        super().__init__(r1.raw_r1)
 
         self.r1b_busy = any(map(lambda d: d == 0, extra_data))
         self.response_type = SDResponseType.R1B
@@ -148,7 +133,7 @@ class SDResponseR2(SDResponse):
             ValueError: if the supplied extra_data is of incorrect length
         """
 
-        super().__init__(r1)
+        super().__init__(r1.raw_r1)
 
         if len(extra_data) != 1:
             raise ValueError(
@@ -201,7 +186,7 @@ class SDResponseR3(SDResponse):
             ValueError: if the supplied extra_data is of incorrect length
         """
 
-        super().__init__(r1)
+        super().__init__(r1.raw_r1)
 
         if len(extra_data) != 4:
             raise ValueError(
@@ -284,7 +269,7 @@ class SDResponseR7(SDResponse):
             ValueError: if the supplied extra_data is of incorrect length
         """
 
-        super().__init__(r1)
+        super().__init__(r1.raw_r1)
 
         if len(extra_data) != 4:
             raise ValueError(
