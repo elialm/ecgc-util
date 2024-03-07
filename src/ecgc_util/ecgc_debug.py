@@ -1,5 +1,5 @@
 from .exception_debugging import log_info
-from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException, SDResponseType, SDException, SDResponseR1B
+from .ecgc_debugger import ECGCDebugger, SpiChipSelect, DebuggerException, SerialException, SDResponseType, SDException, SDResponse
 from .util import parse_rgbds_int, scatter
 from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
@@ -394,11 +394,11 @@ class DebugShell(cmd.Cmd):
         # print R1 response information
         print('Response R1 stats:')
         print('    - card is {}in idle state'.format('' if response.r1_in_idle_state else 'not '))
-        if not response.error_occurred():
+        r1_error_ocurred = response.error_occurred() if response.response_type == SDResponseType.R1 else super(type(response), response).error_occurred()
+        if not r1_error_ocurred:
             print('    - no errors detected')
         else:
             print('    - error(s) detected!')
-            print('        - error detected!')
             print('        - parameter_error        : {}'.format('1' if response.r1_parameter_error else '0'))
             print('        - address_error          : {}'.format('1' if response.r1_address_error else '0'))
             print('        - erase_sequence_error   : {}'.format('1' if response.r1_erase_sequence_error else '0'))
