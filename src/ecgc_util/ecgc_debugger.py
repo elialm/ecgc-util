@@ -251,6 +251,9 @@ class ECGCDebugger(UartDebugger):
             keep_selected = False
             raise e
         finally:
+            # flush any remaining stuff
+            self.spi_write(b'\xFF\xFF')
+
             if not keep_selected:
                 self.spi_deselect()
 
