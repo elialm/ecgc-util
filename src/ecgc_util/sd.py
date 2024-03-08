@@ -28,7 +28,7 @@ class SDResponseType(Enum):
     R7 = auto()
 
 
-__SD_COMMAND_EXPECTED_RESPONSES = {
+__SD_CMD_EXPECTED_RESPONSES = {
     0: SDResponseType.R1,
     1: SDResponseType.R1,
     6: SDResponseType.R1,
@@ -56,15 +56,57 @@ __SD_COMMAND_EXPECTED_RESPONSES = {
     59: SDResponseType.R1,
 }
 
+__SD_ACMD_EXPECTED_RESPONSES = {
+    13: SDResponseType.R2,
+    22: SDResponseType.R1,
+    23: SDResponseType.R1,
+    41: SDResponseType.R1,
+    42: SDResponseType.R1,
+    51: SDResponseType.R1,
+}
 
-def sd_command_get_expected_response(cmd_index: int) -> SDResponseType:
-    expected_response = __SD_COMMAND_EXPECTED_RESPONSES.get(cmd_index, None)
+
+def sd_cmd_get_expected_response(cmd_index: int) -> SDResponseType:
+    """Get expected response for a given SPI mode SD command
+
+    Args:
+        cmd_index (int): command index of the SD command
+
+    Raises:
+        ValueError: if the given command index is not a valid SPI
+        mode SD command
+
+    Returns:
+        SDResponseType: expected response of the given command index
+    """
+
+    expected_response = __SD_CMD_EXPECTED_RESPONSES.get(cmd_index, None)
     if cmd_index == None:
         raise ValueError(
             'given cmd_index does not belong to a valid SD command in SPI mode')
 
     return expected_response
 
+def sd_acmd_get_expected_response(cmd_index: int) -> SDResponseType:
+    """Get expected response for a given SPI mode SD application command
+
+    Args:
+        cmd_index (int): command index of the SD application command
+
+    Raises:
+        ValueError: if the given command index is not a valid SPI
+        mode SD application command
+
+    Returns:
+        SDResponseType: expected response of the given command index
+    """
+
+    expected_response = __SD_ACMD_EXPECTED_RESPONSES.get(cmd_index, None)
+    if cmd_index == None:
+        raise ValueError(
+            'given cmd_index does not belong to a valid SD application command in SPI mode')
+
+    return expected_response
 
 class SDResponse:
     """Class containing the fields of SD SPI response R1"""

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
-from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, SDResponseR7, sd_command_get_expected_response
+from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, SDResponseR7, sd_cmd_get_expected_response, sd_acmd_get_expected_response
 from enum import Enum
 
 class SpiChipSelect(Enum):
@@ -175,34 +175,7 @@ class ECGCDebugger(UartDebugger):
 
         return response
 
-    def sd_send_cmd(self, cmd: int, arg: int, keep_selected: bool = False) -> SDResponse:
-        """Send given SD card command and return response information
-
-        Args:
-            cmd (int): cmd index
-            arg (int): cmd argument
-            keep_selected (bool, optional): keep the CS line selected after exiting method. Defaults to False.
-
-        Raises:
-            ValueError: if cmd is not a 6-bit unsigned integer
-            ValueError: if arg is not a 32-bit unsigned integer
-            SDException: if an error occurs during reading of response
-            DebuggerException: if an unexpected debugger response is received
-            SerialException: if some communication error occurs
-
-        Returns:
-            SDResponse: response object containing response data
-        """
-        
-        if cmd < 0 or cmd > 0x3F:
-            raise ValueError('cmd must be a 6-bit unsigned integer')
-        
-        if arg < 0 or arg > 0xFFFFFFFF:
-            raise ValueError('arg must be a 32-bit unsigned integer')
-
-        # check cmd index and if valid, get expected response
-        expected_response = sd_command_get_expected_response(cmd)
-
+    def __sd_send_cmd(self, cmd: int, arg: int, keep_selected: bool, expected_response: SDResponseType) -> SDResponse:
         # build command frame
         cmd_frame = bytearray()
         cmd_frame.extend((cmd | 0b01000000).to_bytes(1, 'big'))
@@ -258,3 +231,68 @@ class ECGCDebugger(UartDebugger):
                 self.spi_deselect()
 
         return response
+
+    def sd_send_cmd(self, cmd: int, arg: int, keep_selected: bool = False) -> SDResponse:
+        """Send given SD card command and return response information
+
+        Args:
+            cmd (int): cmd index
+            arg (int): cmd argument
+            keep_selected (bool, optional): keep the CS line selected after exiting method. Defaults to False.
+
+        Raises:
+            ValueError: if cmd is not a 6-bit unsigned integer
+            ValueError: if arg is not a 32-bit unsigned integer
+            SDException: if an error occurs during reading of response
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
+
+        Returns:
+            SDResponse: response object containing response data
+        """
+        
+        if cmd < 0 or cmd > 0x3F:
+            raise ValueError('cmd must be a 6-bit unsigned integer')
+        
+        if arg < 0 or arg > 0xFFFFFFFF:
+            raise ValueError('arg must be a 32-bit unsigned integer')
+
+        # send command and return response object
+        expected_response = sd_cmd_get_expected_response(cmd)
+        return self.__sd_send_cmd(cmd, arg, keep_selected, expected_response)
+
+    def sd_send_acmd(self, acmd: int, arg: int, keep_selected: bool = False) -> SDResponse:
+        """Send given SD card application command and return response information
+
+        Args:
+            acmd (int): acmd index
+            arg (int): acmd argument
+            keep_selected (bool, optional): keep the CS line selected after exiting method. Defaults to False.
+
+        Raises:
+            ValueError: if acmd is not a 6-bit unsigned integer
+            ValueError: if arg is not a 32-bit unsigned integer
+            SDException: if an error occurs during reading of response
+            DebuggerException: if an unexpected debugger response is received
+            SerialException: if some communication error occurs
+
+        Returns:
+            SDResponse: response object containing response data of tha application command
+        """
+
+        if acmd < 0 or acmd > 0x3F:
+            raise ValueError('acmd must be a 6-bit unsigned integer')
+        
+        if arg < 0 or arg > 0xFFFFFFFF:
+            raise ValueError('arg must be a 32-bit unsigned integer')
+
+        # send CMD55 to specify that an application command is being sent
+        expected_response = sd_cmd_get_expected_response(55)
+        response = self.__sd_send_cmd(55, 0, False, expected_response)
+        if response.error_occurred():
+            raise SDException(55, arg, None, response)
+
+        # send the actual application command
+        expected_response = sd_acmd_get_expected_response(acmd)
+        return self.__sd_send_cmd(acmd, arg, keep_selected, expected_response)
+    
