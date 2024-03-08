@@ -94,6 +94,10 @@ none is given, only the SD card's R1 response is expected.
 A couple of examples using the sd command:
     - Resetting the card with CMD0
         > sd 0 0
+    - Checking operating voltage
+        > sd 8 $00000155
+    - Read card OCR register
+        > sd 58 0
 
 WARNING: familiarity with the SD card SPI protocol is recommended when using this
 command. Misuse could result in corrupted data or destroying the SD card.
@@ -435,9 +439,9 @@ class DebugShell(cmd.Cmd):
             case SDResponseType.R7:
                 print('Response R7 stats:')
                 print('    - command_version    : {}'.format(response.r7_command_version))
-                print('    - voltage_accepted   : {}'.format(self.r7_voltage_accepted.name))
-                print('    - check_pattern      : 0x{:02X}'.format(self.r7_check_pattern))
-                print('    - check pattern {}'.format('matches' if self.r7_check_pattern == (args.arg & 0xFF) else 'does not match'))
+                print('    - voltage_accepted   : {}'.format(response.r7_voltage_accepted.name))
+                print('    - check_pattern      : 0x{:02X}'.format(response.r7_check_pattern))
+                print('    - check pattern {}'.format('matches' if response.r7_check_pattern == (args.arg & 0xFF) else 'does not match'))
 
     def help_sd(self):
         self.__parsers['sd'].print_help()
