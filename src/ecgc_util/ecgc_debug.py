@@ -88,8 +88,9 @@ The command is specified using its command index and argument. These are given a
 arguments to the sd command. Using this information, the script will build the
 command frame. Its CRC will also be calculated and appended to the cmd frame.
 
-The expected response can be passed using the -r/--expected-response flag. If
-none is given, only the SD card's R1 response is expected.
+In the case where the -a/--acmd flag is passed, the script will treat the given
+SD command as an application command. In practice, this means that CMD55 will be
+sent prior to sending the given command index and argument.
 
 A couple of examples using the sd command:
     - Resetting the card with CMD0
@@ -98,6 +99,8 @@ A couple of examples using the sd command:
         > sd 8 $00000155
     - Read card OCR register
         > sd 58 0
+    - Initialising the card with HCS support
+        > sd 41 $40000000 --acmd
 
 WARNING: familiarity with the SD card SPI protocol is recommended when using this
 command. Misuse could result in corrupted data or destroying the SD card.
@@ -120,7 +123,7 @@ cancelled.
     - read [-f] [-s SIZE] address
     - write [-f] [-s] [-r REPEAT] address data [data ...]
     - spi [-r REPEAT] [-k] {{flash,rtc,sd}} data [data ...]
-    - sd ...
+    - sd [-k] [-a] cmd arg
 
 ## Integer formatting
 
@@ -135,19 +138,19 @@ formatting rules are as follows:
 Leading zeros are not necessary when there's a need of a specific integer size.
 For example, the 16-bit address $0100 may also be written as $100.
 
-## Read command
+## read command
 
 {__READ_EPILOG}
 
-## Write command
+## write command
 
 {__WRITE_EPILOG}
 
-## Spi command
+## spi command
 
 {__SPI_EPILOG}
 
-## Sd command
+## sd command
 
 {__SD_EPILOG}
 """
@@ -192,6 +195,7 @@ def construct_parser_sd() -> SubArgumentParser:
     parser.add_argument('cmd', help='command index of SD command')
     parser.add_argument('arg', help='argument of SD command')
     parser.add_argument('-k', '--keep-selected', action='store_true', help='keep the SD card selected after command completion')
+    parser.add_argument('-a', '--acmd', action='store_true', help='send the given command as an application command')
 
     return parser
 
@@ -390,7 +394,10 @@ class DebugShell(cmd.Cmd):
         
         # send command
         try:
-            response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.keep_selected)
+            if args.acmd:
+                response = self.__debugger.sd_send_acmd(args.cmd, args.arg, args.keep_selected)
+            else:
+                response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.keep_selected)
         except (SDException, NotImplementedError) as e:
             self.__print_error(e)
             return
