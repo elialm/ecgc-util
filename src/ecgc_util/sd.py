@@ -212,7 +212,7 @@ class SDResponseR3(SDResponse):
                 break
 
         # get upper bound
-        for i in range(10, 0, -1):
+        for i in range(9, 0, -1):
             upper_bound = SDResponseR3.__VDD_RANGE_BOUNDS[i]
             if vdd_range & (1 << i):
                 break
