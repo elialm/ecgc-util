@@ -6,16 +6,35 @@ from dataclasses import dataclass
 class SDException(Exception):
     """Exception thrown when an error occurs during SD card operations"""
 
-    def __init__(self, sd_cmd: int, sd_arg: int, sd_response_raw: bytes, sd_response: SDResponse = None, *args: object) -> None:
-        super().__init__(*args)
-
+    def __init__(self, sd_cmd: int, sd_arg: int, sd_response_raw: bytes = None, sd_response: SDResponse = None) -> None:
         self.sd_cmd = sd_cmd
         self.sd_arg = sd_arg
         self.sd_response_raw = sd_response_raw
         self.sd_response = sd_response
 
     def __str__(self) -> str:
-        return f'error responding to CMD{self.sd_cmd} with arg 0x{self.sd_arg:08X}: received {" ".join([hex(b).upper().replace("X", "x") for b in self.sd_response_raw])}'
+        msg = f'error responding to CMD{self.sd_cmd} with arg 0x{self.sd_arg:08X}'
+
+        # determine extra information to append to error, based on response info
+        if self.sd_response:
+            extra_msg = f'error receiving response {self.sd_response.response_type.name}, R1 = 0b{self.sd_response.raw_r1:08b}'
+
+            match self.sd_response.response_type:
+                case SDResponseType.R1B:
+                    extra_msg += ', busy flag {}set'.format('' if self.sd_response.r1b_busy else 'not ')
+                case SDResponseType.R2:
+                    extra_msg += f', R2 = 0b{self.sd_response.raw_r2:08b}'
+                case SDResponseType.R3:
+                    extra_msg += f', R3 = 0x{self.sd_response.raw_r3:08X}'
+                case SDResponseType.R7:
+                    extra_msg += f', R7 = 0x{self.sd_response.raw_r7:08X}'
+        elif self.sd_response_raw:
+            extra_msg = 'received {" ".join([hex(b).upper().replace("X", "x") for b in self.sd_response_raw])}'
+
+        if extra_msg:
+            msg += ': ' + extra_msg
+
+        return msg
 
 
 class SDResponseType(Enum):
@@ -182,15 +201,15 @@ class SDResponseR2(SDResponse):
                 f'expected 1 byte of extra data decoding R2, got {len(extra_data)}')
 
         # decode R2 byte
-        response = extra_data[0]
-        self.r2_out_of_range_or_csd_overwrite = bool(response & 0b10000000)
-        self.r2_erase_param = bool(response & 0b01000000)
-        self.r2_wp_violation = bool(response & 0b00100000)
-        self.r2_card_ecc_failed = bool(response & 0b00010000)
-        self.r2_cc_error = bool(response & 0b00001000)
-        self.r2_error = bool(response & 0b00000100)
-        self.r2_wp_erase_skip_or_lock_unlock_cmd_failed = bool(response & 0b00000010)
-        self.r2_card_is_locked = bool(response & 0b00000001)
+        self.raw_r2 = extra_data[0]
+        self.r2_out_of_range_or_csd_overwrite = bool(self.raw_r2 & 0b10000000)
+        self.r2_erase_param = bool(self.raw_r2 & 0b01000000)
+        self.r2_wp_violation = bool(self.raw_r2 & 0b00100000)
+        self.r2_card_ecc_failed = bool(self.raw_r2 & 0b00010000)
+        self.r2_cc_error = bool(self.raw_r2 & 0b00001000)
+        self.r2_error = bool(self.raw_r2 & 0b00000100)
+        self.r2_wp_erase_skip_or_lock_unlock_cmd_failed = bool(self.raw_r2 & 0b00000010)
+        self.r2_card_is_locked = bool(self.raw_r2 & 0b00000001)
 
         self.response_type = SDResponseType.R2
 
@@ -235,14 +254,14 @@ class SDResponseR3(SDResponse):
                 f'expected 4 bytes of extra data decoding R3, got {len(extra_data)}')
 
         # decode R3 bytes
-        self.raw_ocr = int.from_bytes(extra_data, 'big')
-        self.r3_low_vdd_range = bool(self.raw_ocr & (1 << 7))
-        self.r3_s19a = bool(self.raw_ocr & (1 << 24))
-        self.r3_co2t = bool(self.raw_ocr & (1 << 27))
-        self.r3_uhs2_status = bool(self.raw_ocr & (1 << 29))
-        self.r3_ccs = bool(self.raw_ocr & (1 << 30))
-        self.r3_busy = not bool(self.raw_ocr & (1 << 31))
-        self.r3_vdd_range = self.__decode_vdd_range((self.raw_ocr >> 15) & 0x1FF)
+        self.raw_r3 = int.from_bytes(extra_data, 'big')
+        self.r3_low_vdd_range = bool(self.raw_r3 & (1 << 7))
+        self.r3_s19a = bool(self.raw_r3 & (1 << 24))
+        self.r3_co2t = bool(self.raw_r3 & (1 << 27))
+        self.r3_uhs2_status = bool(self.raw_r3 & (1 << 29))
+        self.r3_ccs = bool(self.raw_r3 & (1 << 30))
+        self.r3_busy = not bool(self.raw_r3 & (1 << 31))
+        self.r3_vdd_range = self.__decode_vdd_range((self.raw_r3 >> 15) & 0x1FF)
 
         self.response_type = SDResponseType.R3
 
