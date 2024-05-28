@@ -5,10 +5,8 @@ from typing import Iterable
 from argparse import ArgumentParser, RawTextHelpFormatter, ArgumentError, Namespace
 from itertools import chain
 from functools import reduce
-from pprint import pprint
 import logging
 import cmd
-import inspect
 
 
 OUTPUT_LOG_LEVEL = 100
@@ -398,9 +396,15 @@ class DebugShell(cmd.Cmd):
                 response = self.__debugger.sd_send_acmd(args.cmd, args.arg, args.keep_selected)
             else:
                 response = self.__debugger.sd_send_cmd(args.cmd, args.arg, args.keep_selected)
-        except (SDException, NotImplementedError) as e:
+        except NotImplementedError as e:
             self.__print_error(e)
             return
+        except SDException as e:
+            if e.sd_response:
+                response = e.sd_response
+            else:
+                self.__print_error(e)
+                return
         
         # print R1 response information
         print('Response R1 stats:')
