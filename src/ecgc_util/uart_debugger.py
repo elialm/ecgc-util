@@ -5,6 +5,7 @@ from serial import SerialException
 import logging
 import serial
 import re
+from time import sleep
 
 DEBUGGER_BAUD_RATE = 115200
 DEBUGGER_DATA_BITS = 8
@@ -131,11 +132,11 @@ class UartDebugger:
         self.__assert_enabled(self.disable_auto_increment.__name__)
         self.__disable_auto_increment()
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: bytes | int) -> None:
         """Write a sequence of bytes to the cartridge
 
         Args:
-            data (bytes): data to write to the cartridge
+            data (bytes|int): data to write to the cartridge. In case of an int, only the LSB is written.
 
         Raises:
             DebuggerException: if the core is already disabled or an
@@ -200,7 +201,10 @@ class UartDebugger:
     def __disable_auto_increment(self) -> None:
         self.__set_auto_increment(False)
 
-    def __write(self, data: bytes) -> None:
+    def __write(self, data: bytes | int) -> None:
+        if type(data) == int:
+            data = data.to_bytes(1, 'little')
+
         for write_burst in scatter(data, 256):
             packet = bytearray(b'\x30')
             packet.append(len(write_burst) - 1)
@@ -246,7 +250,14 @@ class UartDebugger:
         return ''.join('\\x{:02x}'.format(b) for b in bb)
 
     def __send_packet(self, packet: bytes, response_format: bytes | str, expected_length: int, description: str = 'unspecified operation') -> re.Match:
-        self.__port.write(packet)
+        # TODO: temporary fix for lower SPI speeds
+        # Ideally, this should only be done when limiting spi write speed
+        for b in packet:
+            self.__port.write(b.to_bytes(1, 'little'))
+            self.__port.flush()
+            sleep(0.001)
+
+        # self.__port.write(packet)
 
         logging.debug('sent data for \"{}\"'.format(description))
         logging.debug('       sent {}'.format(UartDebugger.__format_bytes(packet)))

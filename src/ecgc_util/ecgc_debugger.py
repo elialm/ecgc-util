@@ -2,6 +2,8 @@ from __future__ import annotations
 from .uart_debugger import UartDebugger, DebuggerException, SerialException
 from .sd import SDResponseType, SDException, SDResponse, SDResponseR1B, SDResponseR2, SDResponseR3, SDResponseR7, sd_cmd_get_expected_response, sd_acmd_get_expected_response
 from enum import Enum
+import logging
+from itertools import repeat
 
 class SpiChipSelect(Enum):
     """Enumeration of all the CS targets with their value being the CS register value to select it"""
@@ -20,9 +22,7 @@ class ECGCDebugger(UartDebugger):
     __CART_REG_SPI_CS = __CART_REG_SPI_BASE + 2
     __CART_REG_SPI_DATA = __CART_REG_SPI_BASE + 3
 
-    __SPI_DEFAULT_CTRL = (0b00000001).to_bytes(1, 'little')
-    __SPI_DEFAULT_FDIV = (49).to_bytes(1, 'little')
-    __SPI_DEFAULT_CS = (0xFF).to_bytes(1, 'little')
+    __SPI_DEFAULT_CTRL = 0b00000001
     __SPI_FCLK = 100_000_000
     __SPI_CRC7_POLYNOM = 0b10001001
 
@@ -46,21 +46,22 @@ class ECGCDebugger(UartDebugger):
         self.disable_auto_increment()
         self.set_address(ECGCDebugger.__CART_REG_SPI_CTRL)
         self.write(ECGCDebugger.__SPI_DEFAULT_CTRL)
-        self.set_address(ECGCDebugger.__CART_REG_SPI_FDIV)
-        self.write(ECGCDebugger.__SPI_DEFAULT_FDIV)
-        self.set_address(ECGCDebugger.__CART_REG_SPI_CS)
-        self.write(ECGCDebugger.__SPI_DEFAULT_CS)
+        self.spi_deselect()
 
-    def __calculate_fspi(fdiv: int) -> int:
+        # initialise SD with ~400kHz clock with MOSI being high for at least 74 clocks
+        self.spi_set_speed(400_000)
+        self.spi_write(bytes(repeat(0xFF, 10)))
+
+    def __calculate_fspi(fdiv: int) -> float:
         if fdiv < 0 or fdiv > 0xFF:
             raise ValueError('fdiv must be an 8-bit unsigned integer')
         
         return ECGCDebugger.__SPI_FCLK / (fdiv + 1)
     
     def __calculate_fdiv(fspi: int) -> int:
-        return (ECGCDebugger.__SPI_FCLK / fspi) - 1
+        return max(min(round((ECGCDebugger.__SPI_FCLK / fspi) - 1), 0xFF), 0)
 
-    def spi_set_speed(self, freq: int) -> int:
+    def spi_set_speed(self, freq: float) -> float:
         """Attempt to set the desired SPI clock speed
 
         Args:
@@ -74,7 +75,18 @@ class ECGCDebugger(UartDebugger):
             int: actual programmed speed closest to the desired speed
         """
 
-        raise NotImplementedError()
+        # calculate fdiv and actual SPI frequency
+        fdiv = ECGCDebugger.__calculate_fdiv(freq)
+        actual_fspi = ECGCDebugger.__calculate_fspi(fdiv)
+
+        # program frequency
+        self.disable_auto_increment()
+        self.set_address(ECGCDebugger.__CART_REG_SPI_FDIV)
+        self.write(fdiv)
+
+        logging.info(f'spi: set frequency to {actual_fspi}')
+
+        return actual_fspi
     
     def spi_select(self, target: SpiChipSelect):
         """Select a given device on the SPI bus
@@ -91,6 +103,8 @@ class ECGCDebugger(UartDebugger):
         self.set_address(ECGCDebugger.__CART_REG_SPI_CS)
         self.write(target.value)
 
+        logging.info(f'spi: selected {target.name}')
+
     def spi_deselect(self):
         """Deselect any previously selected SPI devices
         
@@ -102,6 +116,8 @@ class ECGCDebugger(UartDebugger):
         self.disable_auto_increment()
         self.set_address(ECGCDebugger.__CART_REG_SPI_CS)
         self.write(SpiChipSelect.NONE.value)
+
+        logging.info(f'spi: deselected all')
 
     def spi_write_read(self, write_data: bytes) -> bytes:
         """Write given data over the SPI bus and read back received data
@@ -131,6 +147,9 @@ class ECGCDebugger(UartDebugger):
             self.write(write_data[i:i+1])
             read_data.append(self.read(1)[0])
 
+        logging.info('spi: wrote {}'.format(' '.join([f'${b:02X}' for b in write_data])))
+        logging.info('spi: read  {}'.format(' '.join([f'${b:02X}' for b in read_data])))
+
         return read_data
     
     def spi_write(self, write_data: bytes):
@@ -151,6 +170,8 @@ class ECGCDebugger(UartDebugger):
         self.disable_auto_increment()
         self.set_address(ECGCDebugger.__CART_REG_SPI_DATA)
         self.write(write_data)
+
+        logging.info('spi: wrote {}'.format(' '.join([f'${b:02X}' for b in write_data])))
 
     def __calculate_crc7(data: bytes | bytearray) -> int:
         crc = 0

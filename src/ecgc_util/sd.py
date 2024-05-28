@@ -29,7 +29,7 @@ class SDException(Exception):
                 case SDResponseType.R7:
                     extra_msg += f', R7 = 0x{self.sd_response.raw_r7:08X}'
         elif self.sd_response_raw:
-            extra_msg = 'received {" ".join([hex(b).upper().replace("X", "x") for b in self.sd_response_raw])}'
+            extra_msg = 'received {}'.format(" ".join([hex(b).upper().replace("X", "x") for b in self.sd_response_raw]))
 
         if extra_msg:
             msg += ': ' + extra_msg
