@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4a
+
+Added:
+- New `ecgc-debug` tool for interacting with the cartridge from a CLI.
+- `ecgc-debug` tool `read` and `write` command for peeking and poking in memory
+- `ecgc-debug` tool `spi` command for operating the SPI bus
+- `ecgc-debug` tool `sd` command for operating the SD card
+
+Fixed:
+- Minor bug fixes
+
 ## v0.3a
 
 Changes:
